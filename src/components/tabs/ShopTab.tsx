@@ -1,9 +1,10 @@
-// 이 파일이 하는 일: 상점 탭 — 장비 부위 탭, 등급별 목록, 구매 시 캐릭터 색상 변화
+// 이 파일이 하는 일: 상점 탭 — 장비 부위 탭, 등급별 목록, 구매 시 캐릭터 색상 변화, 미리보기
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { EQUIPMENT_SLOTS, EQUIPMENT_TIERS, TIER_COLOR } from "@/lib/game/stats";
 import { EquipmentIcon } from "@/components/character/EquipmentIcon";
+import { PixelCharacter } from "@/components/character/PixelCharacter";
 import type { UserEquipment, EquipmentSlot, EquipmentTier } from "@/types/database";
 
 interface Props {
@@ -15,16 +16,24 @@ interface Props {
 export function ShopTab({ gold, equipment, onPurchase }: Props) {
   const [activeSlot, setActiveSlot] = useState<EquipmentSlot>("helmet");
   const [buying, setBuying] = useState(false);
+  const [previewTier, setPreviewTier] = useState<EquipmentTier | null>(equipment[activeSlot]);
+
+  // 슬롯 변경 시 미리보기를 현재 장착 등급으로 리셋
+  useEffect(() => {
+    setPreviewTier(equipment[activeSlot]);
+  }, [activeSlot, equipment]);
 
   const currentTier = equipment[activeSlot];
-
-  // 현재 등급의 인덱스 (null이면 -1)
   const currentTierIdx = currentTier
     ? EQUIPMENT_TIERS.findIndex((t) => t.id === currentTier)
     : -1;
-
-  // 구매 가능한 다음 등급 인덱스 (순차 구매만 허용)
   const nextTierIdx = currentTierIdx + 1;
+
+  // 미리보기용 장비: 현재 장비에서 선택 부위만 previewTier로 교체
+  const previewEquipment: Partial<UserEquipment> = { ...equipment, [activeSlot]: previewTier };
+
+  const previewTierInfo = previewTier ? EQUIPMENT_TIERS.find((t) => t.id === previewTier) : null;
+  const activeSlotLabel = EQUIPMENT_SLOTS.find((s) => s.id === activeSlot)?.label ?? "";
 
   async function handleBuy(tier: EquipmentTier, price: number) {
     if (gold < price || buying) return;
@@ -80,12 +89,40 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
         })}
       </div>
 
-      {/* 선택한 부위 안내 */}
-      <div className="flex items-center justify-center gap-2">
-        <EquipmentIcon slotId={activeSlot} size={20} tier={currentTier} />
-        <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-          {EQUIPMENT_SLOTS.find((s) => s.id === activeSlot)?.label} 장비
-        </span>
+      {/* 캐릭터 미리보기 카드 */}
+      <div className="bg-gradient-to-r from-[#EEF3EE] to-[#F5F5F0] dark:from-[#1F2A1F] dark:to-[#242B24] rounded-2xl p-3 border border-[#D4E4D4] dark:border-[#3D5A3E]/30 flex items-center gap-4">
+        {/* 픽셀 캐릭터 */}
+        <div className="shrink-0 flex items-center justify-center w-[72px] h-[72px]">
+          <PixelCharacter equipment={previewEquipment} size={72} />
+        </div>
+
+        {/* 미리보기 정보 */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 font-medium mb-1">
+            👁 {activeSlotLabel} 미리보기
+          </p>
+          {previewTierInfo ? (
+            <div className="flex items-center gap-2">
+              <span
+                className="text-sm font-bold px-2 py-0.5 rounded-full text-white"
+                style={{ backgroundColor: previewTierInfo.color }}
+              >
+                {previewTierInfo.label}
+              </span>
+              {previewTier === currentTier && (
+                <span className="text-[10px] text-green-500 font-medium">✓ 장착 중</span>
+              )}
+              {previewTier !== currentTier && (
+                <span className="text-[10px] text-amber-500 font-medium">미리보기</span>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-gray-400 dark:text-gray-500">장비 없음</p>
+          )}
+          <p className="text-[10px] text-gray-400 dark:text-gray-600 mt-1.5">
+            아래 등급을 탭하면 미리볼 수 있어요
+          </p>
+        </div>
       </div>
 
       {/* 등급 목록 */}
@@ -94,16 +131,20 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
           const isOwned = currentTierIdx >= idx;
           const isNext = idx === nextTierIdx;
           const canBuy = isNext && gold >= tier.price;
+          const isPreviewing = previewTier === tier.id;
 
           return (
             <div
               key={tier.id}
-              className={`bg-white dark:bg-[#242B24] rounded-2xl p-4 border transition-all ${
-                isOwned
+              onClick={() => setPreviewTier(tier.id)}
+              className={`bg-white dark:bg-[#242B24] rounded-2xl p-4 border transition-all cursor-pointer ${
+                isPreviewing
+                  ? "border-amber-300 dark:border-amber-600/50 shadow-sm ring-1 ring-amber-200 dark:ring-amber-700/30"
+                  : isOwned
                   ? "border-gray-100 dark:border-gray-800 opacity-50"
                   : isNext
                   ? "border-[#9ABA9A] dark:border-[#3D5A3E]/50 shadow-sm"
-                  : "border-gray-100 dark:border-gray-800 opacity-40"  // 잠긴 등급
+                  : "border-gray-100 dark:border-gray-800 opacity-40"
               }`}
             >
               <div className="flex items-center justify-between">
@@ -132,7 +173,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
                     <span className="text-xs text-green-500 font-medium">✓ 보유</span>
                   ) : isNext ? (
                     <button
-                      onClick={() => handleBuy(tier.id, tier.price)}
+                      onClick={(e) => { e.stopPropagation(); handleBuy(tier.id, tier.price); }}
                       disabled={!canBuy || buying}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all ${
                         canBuy
