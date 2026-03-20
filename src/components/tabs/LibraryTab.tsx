@@ -190,7 +190,7 @@ function BookCard({
               />
             </div>
             <span className="text-[10px] text-gray-400 dark:text-gray-500 whitespace-nowrap">
-              {book.read_pages} / {book.total_pages}p
+              {book.read_pages} / {book.total_pages}p ({Math.round(progress)}%)
             </span>
           </div>
         </div>
