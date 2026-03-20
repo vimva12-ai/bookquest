@@ -52,6 +52,22 @@ export interface Book {
   status: BookStatus;
   completed_at: string | null;
   created_at: string;
+  // 카카오 API 연동 후 추가된 컬럼
+  isbn?: string | null;
+  publisher?: string | null;
+  cover_url?: string | null;
+  description?: string | null;
+}
+
+// 커뮤니티 페이지 정보 (ISBN 기준 공유)
+export interface CommunityBookInfo {
+  isbn: string;
+  title: string;
+  total_pages: number;
+  page_entries: Array<{ pages: number; count: number }>;
+  contributor_count: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface ReadingLog {

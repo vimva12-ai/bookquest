@@ -1,8 +1,8 @@
-// 이 파일이 하는 일: 서재 탭 — 책 목록 조회·추가·페이지 기록·완독 처리
+// 이 파일이 하는 일: 서재 탭 — 책 목록 조회·추가(카카오 검색)·페이지 기록·완독 처리
 "use client";
 
-import { useState } from "react";
-import type { Book, Genre } from "@/types/database";
+import { useState, useRef, useEffect } from "react";
+import type { Book, Genre, CommunityBookInfo } from "@/types/database";
 import { GENRE_INFO } from "@/lib/game/stats";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
@@ -11,6 +11,29 @@ import {
   GOLD_PER_PAGE,
   GOLD_BONUS_COMPLETE,
 } from "@/lib/game/exp";
+
+// ─── 카카오 API 응답 타입 ────────────────────────────────
+interface KakaoBook {
+  title: string;
+  authors: string[];
+  publisher: string;
+  isbn: string;
+  thumbnail: string;
+  contents: string;
+  datetime: string;
+}
+
+// ─── 책 추가 폼 데이터 타입 ──────────────────────────────
+interface BookFormData {
+  title: string;
+  author: string;
+  total_pages: number;
+  genre: Genre;
+  isbn: string | null;
+  publisher: string | null;
+  cover_url: string | null;
+  description: string | null;
+}
 
 // ─── 장르 선택 버튼 ─────────────────────────────────────
 function GenreChip({
@@ -118,20 +141,33 @@ function BookCard({
       }`}
     >
       <div className="flex items-start gap-3">
-        {/* 장르 아이콘 */}
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
-          style={{ backgroundColor: info.color + "20" }}
-        >
-          {info.icon}
-        </div>
+        {/* 표지 이미지 또는 장르 아이콘 */}
+        {book.cover_url ? (
+          <img
+            src={book.cover_url}
+            alt={book.title}
+            className="w-10 h-14 object-cover rounded-lg flex-shrink-0"
+          />
+        ) : (
+          <div
+            className="w-10 h-10 rounded-xl flex items-center justify-center text-xl flex-shrink-0"
+            style={{ backgroundColor: info.color + "20" }}
+          >
+            {info.icon}
+          </div>
+        )}
 
         <div className="flex-1 min-w-0">
           {/* 제목·저자 */}
           <h3 className="font-semibold text-gray-800 dark:text-gray-100 text-sm truncate">
             {book.title}
           </h3>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">{book.author}</p>
+          <p className="text-xs text-gray-400 dark:text-gray-500 mb-1">
+            {book.author}
+            {book.publisher && (
+              <span className="ml-1 opacity-70">· {book.publisher}</span>
+            )}
+          </p>
 
           {/* 장르 태그 */}
           <span
@@ -290,25 +326,150 @@ function RecordPageModal({
   );
 }
 
-// ─── 책 추가 폼 ──────────────────────────────────────────
-function AddBookForm({ onAdd }: { onAdd: (book: Omit<Book, "id" | "user_id" | "read_pages" | "status" | "completed_at" | "created_at">) => Promise<void> }) {
+// ─── 커뮤니티 힌트 렌더 ─────────────────────────────────
+function renderCommunityHint(info: CommunityBookInfo): string {
+  const entries = info.page_entries ?? [];
+  const sorted = [...entries].sort((a, b) => b.count - a.count);
+  const n = info.contributor_count;
+
+  if (sorted.length === 0) return `📚 ${n}명이 이 책을 기록했어요`;
+
+  if (sorted.length === 1 || (sorted[1] && sorted[0].count > sorted[1].count)) {
+    return `📚 다른 독서가 ${n}명이 이 책을 ${sorted[0].pages}p로 기록했어요`;
+  }
+
+  return `📚 ${sorted
+    .slice(0, 3)
+    .map((e) => `${e.pages}p (${e.count}명)`)
+    .join(" / ")}`;
+}
+
+// ─── ISBN13 추출 ─────────────────────────────────────────
+function extractIsbn13(isbnStr: string): string {
+  // 카카오 API: "8937460440 9788937460449" 형식
+  const parts = isbnStr.trim().split(/\s+/);
+  return parts.find((p) => p.length === 13) ?? parts[0] ?? "";
+}
+
+// ─── 책 추가 폼 (카카오 검색 + 직접 입력) ────────────────
+function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }) {
   const [open, setOpen] = useState(false);
+
+  // 검색 상태
+  const [query, setQuery] = useState("");
+  const [results, setResults] = useState<KakaoBook[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchFailed, setSearchFailed] = useState(false);
+  const [showDropdown, setShowDropdown] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // 폼 필드
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [totalPages, setTotalPages] = useState(300);
   const [genre, setGenre] = useState<Genre>("wisdom");
+  const [isbn, setIsbn] = useState("");
+  const [publisher, setPublisher] = useState("");
+  const [coverUrl, setCoverUrl] = useState("");
+  const [description, setDescription] = useState("");
+
+  // 커뮤니티 정보
+  const [communityInfo, setCommunityInfo] = useState<CommunityBookInfo | null>(null);
+  const [communityLoading, setCommunityLoading] = useState(false);
+
   const [saving, setSaving] = useState(false);
+
+  function handleQueryChange(q: string) {
+    setQuery(q);
+    setSearchFailed(false);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    if (q.trim().length < 1) {
+      setResults([]);
+      setShowDropdown(false);
+      return;
+    }
+    debounceRef.current = setTimeout(() => doSearch(q), 300);
+  }
+
+  async function doSearch(q: string) {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/books/search?q=${encodeURIComponent(q)}&size=10`);
+      if (!res.ok) throw new Error();
+      const data: { documents?: KakaoBook[]; error?: string } = await res.json();
+      if (data.error) throw new Error(data.error);
+      setResults(data.documents ?? []);
+      setShowDropdown(true);
+    } catch {
+      setSearchFailed(true);
+      setResults([]);
+      setShowDropdown(true);
+    } finally {
+      setIsSearching(false);
+    }
+  }
+
+  async function handleSelectBook(book: KakaoBook) {
+    setTitle(book.title);
+    setAuthor(book.authors.join(", "));
+    setPublisher(book.publisher ?? "");
+    setCoverUrl(book.thumbnail ?? "");
+    setDescription(book.contents ?? "");
+
+    const isbn13 = extractIsbn13(book.isbn);
+    setIsbn(isbn13);
+    setShowDropdown(false);
+
+    // 커뮤니티 페이지 정보 조회
+    if (isbn13) {
+      setCommunityLoading(true);
+      setCommunityInfo(null);
+      try {
+        const res = await fetch(`/api/books/page-info?isbn=${isbn13}`);
+        const { data }: { data: CommunityBookInfo | null } = await res.json();
+        setCommunityInfo(data);
+        if (data?.total_pages) setTotalPages(data.total_pages);
+      } catch {
+        setCommunityInfo(null);
+      } finally {
+        setCommunityLoading(false);
+      }
+    } else {
+      setCommunityInfo(null);
+    }
+  }
+
+  function handleClearSearch() {
+    setQuery("");
+    setResults([]);
+    setShowDropdown(false);
+    setSearchFailed(false);
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     if (!title.trim()) return;
     setSaving(true);
-    await onAdd({ title: title.trim(), author: author.trim(), total_pages: totalPages, genre });
-    setTitle("");
-    setAuthor("");
-    setTotalPages(300);
-    setOpen(false);
+    await onAdd({
+      title: title.trim(),
+      author: author.trim(),
+      total_pages: Math.max(1, totalPages),
+      genre,
+      isbn: isbn || null,
+      publisher: publisher || null,
+      cover_url: coverUrl || null,
+      description: description || null,
+    });
+    resetForm();
     setSaving(false);
+  }
+
+  function resetForm() {
+    setTitle(""); setAuthor(""); setTotalPages(300); setGenre("wisdom");
+    setIsbn(""); setPublisher(""); setCoverUrl(""); setDescription("");
+    setCommunityInfo(null); setQuery(""); setResults([]);
+    setShowDropdown(false); setSearchFailed(false);
+    setOpen(false);
   }
 
   if (!open) {
@@ -330,7 +491,108 @@ function AddBookForm({ onAdd }: { onAdd: (book: Omit<Book, "id" | "user_id" | "r
     >
       <h3 className="font-semibold text-gray-800 dark:text-gray-100 mb-3">새 책 추가</h3>
 
+      {/* ── 검색 바 ── */}
+      <div className="relative mb-1">
+        <div className="flex items-center gap-2 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 focus-within:ring-2 focus-within:ring-[#5B8C5A]">
+          <span className="text-gray-400 text-sm">🔍</span>
+          <input
+            type="text"
+            placeholder="책 제목으로 검색..."
+            value={query}
+            onChange={(e) => handleQueryChange(e.target.value)}
+            onFocus={() => results.length > 0 && setShowDropdown(true)}
+            onBlur={() => setTimeout(() => setShowDropdown(false), 150)}
+            className="flex-1 bg-transparent text-sm text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none"
+          />
+          {isSearching && (
+            <span className="text-xs text-gray-400 whitespace-nowrap">검색 중...</span>
+          )}
+          {query && !isSearching && (
+            <button
+              type="button"
+              onClick={handleClearSearch}
+              className="text-gray-300 dark:text-gray-600 hover:text-gray-500 text-xs"
+            >
+              ✕
+            </button>
+          )}
+        </div>
+
+        {/* 검색 결과 드롭다운 */}
+        {showDropdown && (
+          <div className="absolute top-full left-0 right-0 z-50 mt-1 bg-white dark:bg-[#242B24] border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+            {results.length > 0 ? (
+              results.map((book, i) => (
+                <button
+                  key={i}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => handleSelectBook(book)}
+                  className="w-full flex items-center gap-3 px-3 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-800 text-left border-b last:border-b-0 border-gray-100 dark:border-gray-700 transition-colors"
+                >
+                  {book.thumbnail ? (
+                    <img
+                      src={book.thumbnail}
+                      alt=""
+                      className="w-8 h-12 object-cover rounded flex-shrink-0"
+                    />
+                  ) : (
+                    <div className="w-8 h-12 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center flex-shrink-0 text-sm">
+                      📖
+                    </div>
+                  )}
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">
+                      {book.title}
+                    </p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">
+                      {book.authors.join(", ")} · {book.publisher}
+                    </p>
+                  </div>
+                </button>
+              ))
+            ) : searchFailed ? (
+              <div className="px-3 py-3 text-xs text-gray-400 text-center">
+                검색에 실패했어요. 직접 입력할 수 있어요
+              </div>
+            ) : (
+              <div className="px-3 py-3 text-xs text-gray-400 text-center">
+                검색 결과가 없어요. 직접 입력해주세요
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 직접 입력 안내 */}
+      <p className="text-xs text-gray-400 dark:text-gray-600 mb-3">
+        검색 후 선택하거나{" "}
+        <button
+          type="button"
+          onClick={handleClearSearch}
+          className="text-[#3D5A3E] dark:text-[#6BA368] underline"
+        >
+          직접 입력하기
+        </button>
+      </p>
+
       <div className="space-y-3">
+        {/* 선택된 책 표지 미리보기 */}
+        {coverUrl && (
+          <div className="flex items-center gap-3 p-2 bg-gray-50 dark:bg-gray-800 rounded-xl">
+            <img src={coverUrl} alt={title} className="w-10 h-14 object-cover rounded" />
+            <div className="min-w-0">
+              <p className="text-xs font-medium text-gray-700 dark:text-gray-300 truncate">{title}</p>
+              {publisher && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">{publisher}</p>
+              )}
+              {isbn && (
+                <p className="text-[10px] text-gray-400 dark:text-gray-500">ISBN {isbn}</p>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 제목 */}
         <input
           type="text"
@@ -350,17 +612,57 @@ function AddBookForm({ onAdd }: { onAdd: (book: Omit<Book, "id" | "user_id" | "r
           className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
         />
 
-        {/* 전체 페이지 */}
-        <div className="flex items-center gap-2">
-          <input
-            type="number"
-            placeholder="전체 페이지"
-            min={1}
-            value={totalPages}
-            onChange={(e) => setTotalPages(Number(e.target.value))}
-            className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
-          />
-          <span className="text-sm text-gray-400">페이지</span>
+        {/* 전체 페이지 + 커뮤니티 힌트 */}
+        <div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="전체 페이지"
+              min={1}
+              value={totalPages}
+              onChange={(e) => setTotalPages(Number(e.target.value))}
+              className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+            />
+            <span className="text-sm text-gray-400">페이지</span>
+          </div>
+
+          {/* 커뮤니티 페이지 힌트 */}
+          {communityLoading && (
+            <p className="text-xs text-blue-400 dark:text-blue-300 mt-1.5 pl-1">
+              커뮤니티 정보 불러오는 중...
+            </p>
+          )}
+          {!communityLoading && communityInfo && (
+            <div className="mt-1.5 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/50 rounded-lg px-3 py-2 text-xs text-blue-700 dark:text-blue-300">
+              {renderCommunityHint(communityInfo)}
+              {communityInfo.page_entries.length > 1 && (
+                <div className="mt-1 flex gap-2 flex-wrap">
+                  {[...communityInfo.page_entries]
+                    .sort((a, b) => b.count - a.count)
+                    .slice(0, 3)
+                    .map((e) => (
+                      <button
+                        key={e.pages}
+                        type="button"
+                        onClick={() => setTotalPages(e.pages)}
+                        className={`px-2 py-0.5 rounded-full border text-[10px] transition-colors ${
+                          totalPages === e.pages
+                            ? "bg-blue-600 dark:bg-blue-700 text-white border-blue-600"
+                            : "border-blue-300 dark:border-blue-700 text-blue-600 dark:text-blue-300 hover:bg-blue-100 dark:hover:bg-blue-900/40"
+                        }`}
+                      >
+                        {e.pages}p ({e.count}명)
+                      </button>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+          {!communityLoading && !communityInfo && isbn && (
+            <p className="text-xs text-gray-400 dark:text-gray-600 mt-1.5 pl-1">
+              페이지 수를 입력해주세요 (책 뒷면에서 확인 가능)
+            </p>
+          )}
         </div>
 
         {/* 장르 선택 */}
@@ -382,7 +684,7 @@ function AddBookForm({ onAdd }: { onAdd: (book: Omit<Book, "id" | "user_id" | "r
       <div className="flex gap-2 mt-4">
         <button
           type="button"
-          onClick={() => setOpen(false)}
+          onClick={resetForm}
           className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
         >
           취소
@@ -414,6 +716,14 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
   const [filter, setFilter] = useState<FilterType>("all");
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+  const [toast, setToast] = useState("");
+
+  // 토스트 자동 제거
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(""), 3500);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   // 필터 적용 + 완독 책 맨 아래 정렬
   const filtered = books
@@ -425,7 +735,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
     });
 
   // 책 추가
-  async function handleAddBook(data: Omit<Book, "id" | "user_id" | "read_pages" | "status" | "completed_at" | "created_at">) {
+  async function handleAddBook(data: BookFormData) {
     await supabase.from("books").insert({
       user_id: userId,
       title: data.title,
@@ -434,7 +744,30 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
       total_pages: data.total_pages,
       read_pages: 0,
       status: "reading",
+      isbn: data.isbn,
+      publisher: data.publisher,
+      cover_url: data.cover_url,
+      description: data.description,
     });
+
+    // 커뮤니티 페이지 DB에 기여 (ISBN이 있을 때만)
+    if (data.isbn && data.total_pages) {
+      try {
+        await fetch("/api/books/page-info", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            isbn: data.isbn,
+            title: data.title,
+            pages: data.total_pages,
+          }),
+        });
+        setToast("📚 페이지 정보가 공유되었어요! 다른 독서가에게 도움이 됩니다");
+      } catch {
+        // 커뮤니티 기여 실패는 조용히 무시
+      }
+    }
+
     onBooksChange();
   }
 
@@ -553,6 +886,13 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
           onClose={() => setDeletingBook(null)}
           onConfirm={handleDeleteBook}
         />
+      )}
+
+      {/* 커뮤니티 기여 토스트 */}
+      {toast && (
+        <div className="fixed bottom-20 left-1/2 -translate-x-1/2 z-50 bg-[#3D5A3E] text-white text-xs px-4 py-2.5 rounded-full shadow-lg whitespace-nowrap">
+          {toast}
+        </div>
       )}
     </div>
   );
