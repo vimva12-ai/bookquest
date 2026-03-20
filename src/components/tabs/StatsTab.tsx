@@ -11,7 +11,6 @@ import { GENRE_INFO } from "@/lib/game/stats";
 import type { Book, ReadingLog } from "@/types/database";
 
 // ─── 타입 ────────────────────────────────────────────────
-interface WeeklyData { day: string; pages: number }
 interface GenreData  { name: string; value: number; color: string }
 interface MonthGroup { month: string; label: string; books: Book[] }
 
@@ -81,6 +80,10 @@ function StreakCalendar({ readDates }: { readDates: Set<string> }) {
   );
 }
 
+// ─── 기간별 통계 타입 ────────────────────────────────────
+type Period = "weekly" | "monthly" | "yearly";
+interface PeriodStat { label: string; pages: number }
+
 // ─── 통계 탭 메인 ────────────────────────────────────────
 interface Props {
   userId: string;
@@ -94,6 +97,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const [logs, setLogs] = useState<ReadingLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
+  const [period, setPeriod] = useState<Period>("weekly");
 
   useEffect(() => {
     async function load() {
@@ -122,21 +126,90 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const totalPages    = logs.reduce((s, l) => s + l.pages_read, 0);
   const completedBooks = books.filter((b) => b.status === "complete").length;
 
-  // 주간 차트 — 최근 7일
-  const weeklyData: WeeklyData[] = (() => {
-    const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
-    const result: WeeklyData[] = [];
-    for (let i = 6; i >= 0; i--) {
-      const d = new Date();
-      d.setDate(d.getDate() - i);
-      const dateStr = d.toISOString().slice(0, 10);
-      const pages = logs
-        .filter((l) => l.date === dateStr)
-        .reduce((s, l) => s + l.pages_read, 0);
-      result.push({ day: DAY_LABELS[d.getDay()], pages });
+  // 날짜별 페이지 맵 (빠른 조회)
+  const pagesByDate = new Map<string, number>();
+  for (const log of logs) {
+    pagesByDate.set(log.date, (pagesByDate.get(log.date) || 0) + log.pages_read);
+  }
+
+  function getPages(dateStr: string) { return pagesByDate.get(dateStr) || 0; }
+
+  const today = new Date();
+  const todayYear  = today.getFullYear();
+  const todayMonth = today.getMonth(); // 0-based
+
+  // ── 기간별 차트 데이터 & 증감 계산 ────────────────────
+
+  // 주간 — 최근 7일 vs 직전 7일
+  const weeklyChart: PeriodStat[] = [];
+  const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
+  let weekCurrent = 0, weekPrev = 0;
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const ds = d.toISOString().slice(0, 10);
+    const p = getPages(ds);
+    weekCurrent += p;
+    weeklyChart.push({ label: DAY_LABELS[d.getDay()], pages: p });
+  }
+  for (let i = 13; i >= 7; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    weekPrev += getPages(d.toISOString().slice(0, 10));
+  }
+
+  // 월간 — 이번 달 주차별 vs 지난 달
+  const monthlyChart: PeriodStat[] = [];
+  let monthCurrent = 0, monthPrev = 0;
+  const daysInMonth = new Date(todayYear, todayMonth + 1, 0).getDate();
+  for (let w = 0; w < 4; w++) {
+    const start = w * 7 + 1;
+    const end = Math.min((w + 1) * 7, daysInMonth);
+    let weekPages = 0;
+    for (let d = start; d <= end; d++) {
+      const ds = `${todayYear}-${String(todayMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      weekPages += getPages(ds);
     }
-    return result;
-  })();
+    monthCurrent += weekPages;
+    monthlyChart.push({ label: `${w + 1}주`, pages: weekPages });
+  }
+  const prevMonth     = todayMonth === 0 ? 11 : todayMonth - 1;
+  const prevMonthYear = todayMonth === 0 ? todayYear - 1 : todayYear;
+  const daysInPrevMonth = new Date(prevMonthYear, prevMonth + 1, 0).getDate();
+  for (let d = 1; d <= daysInPrevMonth; d++) {
+    const ds = `${prevMonthYear}-${String(prevMonth + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+    monthPrev += getPages(ds);
+  }
+
+  // 연간 — 올해 월별 vs 작년
+  const yearlyChart: PeriodStat[] = [];
+  let yearCurrent = 0, yearPrev = 0;
+  for (let m = 0; m < 12; m++) {
+    const daysInM = new Date(todayYear, m + 1, 0).getDate();
+    let mp = 0;
+    for (let d = 1; d <= daysInM; d++) {
+      const ds = `${todayYear}-${String(m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+      mp += getPages(ds);
+    }
+    yearCurrent += mp;
+    yearlyChart.push({ label: `${m + 1}월`, pages: mp });
+  }
+  for (const log of logs) {
+    if (log.date.startsWith(`${todayYear - 1}-`)) yearPrev += log.pages_read;
+  }
+
+  // 활성 기간에 따른 차트 데이터 선택
+  const periodConfig: Record<Period, {
+    chart: PeriodStat[]; current: number; prev: number;
+    currentLabel: string; prevLabel: string;
+  }> = {
+    weekly:  { chart: weeklyChart,  current: weekCurrent,  prev: weekPrev,  currentLabel: "이번 주",  prevLabel: "지난 주" },
+    monthly: { chart: monthlyChart, current: monthCurrent, prev: monthPrev, currentLabel: "이번 달",  prevLabel: "지난 달" },
+    yearly:  { chart: yearlyChart,  current: yearCurrent,  prev: yearPrev,  currentLabel: "올해",     prevLabel: "작년" },
+  };
+  const active = periodConfig[period];
+  const changePct = active.prev > 0
+    ? Math.round(((active.current - active.prev) / active.prev) * 100)
+    : active.current > 0 ? null : 0; // null = 이전 데이터 없음
+
 
   // 장르 분포 — log.genre 직접 사용 (책 삭제 후에도 집계 유지)
   const genreData: GenreData[] = Object.entries(GENRE_INFO).map(([key, info]) => {
@@ -182,15 +255,56 @@ export function StatsTab({ userId, gold, streak }: Props) {
           bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
       </div>
 
-      {/* ── 주간 독서량 바 차트 ── */}
+      {/* ── 독서량 (주간/월간/연간 탭) ── */}
       <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
-        <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-4">📊 최근 7일 독서량</h3>
-        {weeklyData.every((d) => d.pages === 0) ? (
+        {/* 헤더 + 탭 */}
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm">📊 독서량</h3>
+          <div className="flex gap-1">
+            {(["weekly", "monthly", "yearly"] as Period[]).map((p) => (
+              <button
+                key={p}
+                onClick={() => setPeriod(p)}
+                className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${
+                  period === p
+                    ? "bg-[#3D5A3E] text-white"
+                    : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+                }`}
+              >
+                {p === "weekly" ? "주간" : p === "monthly" ? "월간" : "연간"}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        {/* 기간 요약 — 현재 페이지 + 증감률 */}
+        <div className="flex gap-2 mb-3">
+          <div className="flex-1 bg-[#EEF3EE] dark:bg-[#3D5A3E]/20 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">{active.currentLabel}</p>
+            <p className="text-lg font-bold text-gray-800 dark:text-gray-100">{active.current.toLocaleString()}<span className="text-xs font-normal ml-0.5">p</span></p>
+          </div>
+          <div className="flex-1 bg-gray-50 dark:bg-gray-800/50 rounded-xl px-3 py-2">
+            <p className="text-[10px] text-gray-500 dark:text-gray-400 mb-0.5">{active.prevLabel} 대비</p>
+            {changePct === null ? (
+              <p className="text-lg font-bold text-gray-400">-</p>
+            ) : changePct > 0 ? (
+              <p className="text-lg font-bold text-green-500">↑ {changePct}%</p>
+            ) : changePct < 0 ? (
+              <p className="text-lg font-bold text-red-400">↓ {Math.abs(changePct)}%</p>
+            ) : (
+              <p className="text-lg font-bold text-gray-400">→ 0%</p>
+            )}
+            <p className="text-[10px] text-gray-400 dark:text-gray-600">{active.prev.toLocaleString()}p</p>
+          </div>
+        </div>
+
+        {/* 차트 */}
+        {active.chart.every((d) => d.pages === 0) ? (
           <p className="text-xs text-gray-400 text-center py-6">아직 기록이 없습니다</p>
         ) : (
-          <ResponsiveContainer width="100%" height={140}>
-            <BarChart data={weeklyData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-              <XAxis dataKey="day" tick={{ fontSize: 11, fill: "#888" }} axisLine={false} tickLine={false} />
+          <ResponsiveContainer width="100%" height={120}>
+            <BarChart data={active.chart} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+              <XAxis dataKey="label" tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fontSize: 10, fill: "#888" }} axisLine={false} tickLine={false} />
               <Tooltip
                 contentStyle={{ borderRadius: 8, border: "none", fontSize: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
