@@ -10,12 +10,12 @@ interface Props {
 // Armor.png (128×32): 투구(0) / 갑옷(32) / 망토(64) / 신발(96)
 // Weapons.png (128×32): 무기(0) / 방패(32)
 const SLOT_MAP: Record<string, { sheet: string; offsetX: number }> = {
-  helmet: { sheet: "/assets/equipment/30%20Free%20Icons/Armor.png",   offsetX: 0  },
-  armor:  { sheet: "/assets/equipment/30%20Free%20Icons/Armor.png",   offsetX: 32 },
-  cloak:  { sheet: "/assets/equipment/30%20Free%20Icons/Armor.png",   offsetX: 64 },
-  boots:  { sheet: "/assets/equipment/30%20Free%20Icons/Armor.png",   offsetX: 96 },
-  weapon: { sheet: "/assets/equipment/30%20Free%20Icons/Weapons.png", offsetX: 0  },
-  shield: { sheet: "/assets/equipment/30%20Free%20Icons/Weapons.png", offsetX: 32 },
+  helmet: { sheet: "/assets/equipment/30FreeIcons/Armor.png",   offsetX: 0  },
+  armor:  { sheet: "/assets/equipment/30FreeIcons/Armor.png",   offsetX: 32 },
+  cloak:  { sheet: "/assets/equipment/30FreeIcons/Armor.png",   offsetX: 64 },
+  boots:  { sheet: "/assets/equipment/30FreeIcons/Armor.png",   offsetX: 96 },
+  weapon: { sheet: "/assets/equipment/30FreeIcons/Weapons.png", offsetX: 0  },
+  shield: { sheet: "/assets/equipment/30FreeIcons/Weapons.png", offsetX: 32 },
 };
 
 // 폴백 이모지 (이미지 로드 실패 시)
