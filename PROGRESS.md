@@ -1,6 +1,6 @@
 # Book Quest — 개발 진행 상황
 
-> 마지막 업데이트: 2026-03-19
+> 마지막 업데이트: 2026-03-20
 > 다음 대화에서 이 파일을 보여주면 이어서 진행할 수 있습니다.
 
 ---
@@ -49,18 +49,29 @@ C:\Users\vimva\Desktop\claude-code-folder\bookquest-app\
 
 ## 미완료 Phase
 
-### ⏳ Phase 3 배포 (남은 작업)
-Cloudflare Pages 배포는 **GitHub 연동 방식** 권장 (Windows 로컬 빌드 불안정)
+### ⏳ Phase 3 배포 (진행 중)
 
-1. bookquest-app을 GitHub에 push
-2. Cloudflare Pages → Workers & Pages → Create → Pages → Connect to Git
-3. Build 설정:
+#### 완료된 배포 작업
+- GitHub 레포 분리: `https://github.com/vimva12-ai/bookquest` (별도 레포)
+- `open-next.config.ts` 수정: `proxyExternalRequest: "fetch"` + `edgeExternals: ["node:crypto"]` 추가 (빌드 에러 수정)
+- GitHub push 완료 (master 브랜치)
+- Cloudflare Workers에 배포됨 → `https://bookquest.vimva12.workers.dev/` (Hello World만 표시 — 앱 미연결 상태)
+
+#### 남은 배포 작업
+현재 Worker(`bookquest.vimva12.workers.dev`)는 GitHub 레포와 실제로 연결되지 않은 기본 템플릿 상태.
+**Cloudflare Pages로 새로 연결해야 함** (Worker가 아닌 Pages 방식):
+
+1. Cloudflare 대시보드 → **Workers & Pages** → **Create**
+2. **Pages** 탭 → **Connect to Git**
+3. `vimva12-ai/bookquest` 레포 선택
+4. 빌드 설정:
    - Build command: `npx opennextjs-cloudflare build`
    - Output directory: `.open-next/assets`
-4. 환경변수 추가:
+   - 배치 명령: `echo done` (비워둘 수 없을 경우)
+5. 환경변수 추가:
    - `NEXT_PUBLIC_SUPABASE_URL=https://tpfficaafxeerefavphc.supabase.co`
    - `NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbG...` (`.env.local` 참고)
-5. Supabase → Authentication → URL Configuration에 Cloudflare 도메인 추가
+6. Supabase → Authentication → URL Configuration에 새 Cloudflare Pages 도메인 추가
 
 ### ⏳ Phase 4 — 확장 (향후)
 - 3차 전직 (Lv.40+)
