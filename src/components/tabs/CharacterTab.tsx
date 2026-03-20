@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { PixelCharacter } from "@/components/character/PixelCharacter";
+import { EquipmentIcon } from "@/components/character/EquipmentIcon";
 import { GENRE_INFO, EQUIPMENT_SLOTS, TIER_COLOR, EQUIPMENT_TIERS } from "@/lib/game/stats";
 import { getExpToNextLevel, getExpProgress } from "@/lib/game/exp";
 import { ALL_TITLES, type TitleCheckContext } from "@/lib/game/titles";
@@ -182,7 +183,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
             const tierInfo = EQUIPMENT_TIERS.find((t) => t.id === tier);
             return (
               <div key={slot.id} className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                <span className="text-lg">{slot.icon}</span>
+                <EquipmentIcon slotId={slot.id} size={24} />
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">{slot.label}</span>
                 {tierInfo ? (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: TIER_COLOR[tierInfo.id] }}>

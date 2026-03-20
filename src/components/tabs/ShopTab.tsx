@@ -3,6 +3,7 @@
 
 import { useState } from "react";
 import { EQUIPMENT_SLOTS, EQUIPMENT_TIERS, TIER_COLOR } from "@/lib/game/stats";
+import { EquipmentIcon } from "@/components/character/EquipmentIcon";
 import type { UserEquipment, EquipmentSlot, EquipmentTier } from "@/types/database";
 
 interface Props {
@@ -62,7 +63,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
                   : "border-gray-100 dark:border-gray-800 bg-white dark:bg-[#242B24]"
               }`}
             >
-              <span className="text-xl">{slot.icon}</span>
+              <EquipmentIcon slotId={slot.id} size={28} />
               <span className="text-xs text-gray-500 dark:text-gray-400">{slot.label}</span>
               {tierInfo ? (
                 <span
@@ -80,9 +81,9 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
       </div>
 
       {/* 선택한 부위 안내 */}
-      <div className="text-center">
+      <div className="flex items-center justify-center gap-2">
+        <EquipmentIcon slotId={activeSlot} size={20} />
         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
-          {EQUIPMENT_SLOTS.find((s) => s.id === activeSlot)?.icon}{" "}
           {EQUIPMENT_SLOTS.find((s) => s.id === activeSlot)?.label} 장비
         </span>
       </div>

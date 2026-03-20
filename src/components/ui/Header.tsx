@@ -1,7 +1,8 @@
-// 이 파일이 하는 일: 상단 헤더 — 앱 로고, 골드, 레벨, 다크모드 토글
+// 이 파일이 하는 일: 상단 헤더 — 앱 로고, 골드, 레벨, 다크모드 토글, 크레딧
 "use client";
 
 import { useEffect, useState } from "react";
+import { CreditsModal } from "./CreditsModal";
 
 interface Props {
   gold: number;
@@ -10,6 +11,7 @@ interface Props {
 
 export function Header({ gold, level }: Props) {
   const [dark, setDark] = useState(false);
+  const [showCredits, setShowCredits] = useState(false);
 
   // 마운트 시 localStorage에서 테마 읽기
   useEffect(() => {
@@ -29,6 +31,7 @@ export function Header({ gold, level }: Props) {
   }
 
   return (
+    <>
     <header className="fixed top-0 left-0 right-0 z-40 h-12 flex items-center justify-between px-4 bg-white dark:bg-[#242B24] border-b border-[#E8E4DD] dark:border-[#333D33] shadow-sm">
       {/* 로고 */}
       <div className="flex items-center gap-2">
@@ -55,6 +58,15 @@ export function Header({ gold, level }: Props) {
           </span>
         </div>
 
+        {/* 크레딧 */}
+        <button
+          onClick={() => setShowCredits(true)}
+          className="text-sm leading-none text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
+          aria-label="크레딧"
+        >
+          ⓘ
+        </button>
+
         {/* 다크모드 토글 */}
         <button
           onClick={toggleTheme}
@@ -65,5 +77,8 @@ export function Header({ gold, level }: Props) {
         </button>
       </div>
     </header>
+
+    {showCredits && <CreditsModal onClose={() => setShowCredits(false)} />}
+    </>
   );
 }
