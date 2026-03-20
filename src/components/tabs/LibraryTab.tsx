@@ -28,6 +28,7 @@ interface BookFormData {
   title: string;
   author: string;
   total_pages: number;
+  prior_pages: number;
   genre: Genre;
   isbn: string | null;
   publisher: string | null;
@@ -367,6 +368,7 @@ function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [totalPages, setTotalPages] = useState(300);
+  const [priorPages, setPriorPages] = useState(0);
   const [genre, setGenre] = useState<Genre>("wisdom");
   const [isbn, setIsbn] = useState("");
   const [publisher, setPublisher] = useState("");
@@ -454,6 +456,7 @@ function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }
       title: title.trim(),
       author: author.trim(),
       total_pages: Math.max(1, totalPages),
+      prior_pages: Math.min(Math.max(0, priorPages), Math.max(1, totalPages) - 1),
       genre,
       isbn: isbn || null,
       publisher: publisher || null,
@@ -465,7 +468,7 @@ function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }
   }
 
   function resetForm() {
-    setTitle(""); setAuthor(""); setTotalPages(300); setGenre("wisdom");
+    setTitle(""); setAuthor(""); setTotalPages(300); setPriorPages(0); setGenre("wisdom");
     setIsbn(""); setPublisher(""); setCoverUrl(""); setDescription("");
     setCommunityInfo(null); setQuery(""); setResults([]);
     setShowDropdown(false); setSearchFailed(false);
@@ -665,6 +668,27 @@ function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }
           )}
         </div>
 
+        {/* 이미 읽은 페이지 */}
+        <div>
+          <div className="flex items-center gap-2">
+            <input
+              type="number"
+              placeholder="이미 읽은 페이지 (선택)"
+              min={0}
+              max={Math.max(1, totalPages) - 1}
+              value={priorPages || ""}
+              onChange={(e) => setPriorPages(Number(e.target.value) || 0)}
+              className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 placeholder-gray-300 dark:placeholder-gray-600 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+            />
+            <span className="text-sm text-gray-400">페이지</span>
+          </div>
+          {priorPages > 0 && (
+            <p className="text-xs text-amber-600 dark:text-amber-400 mt-1.5 pl-1">
+              📖 앱 등록 전 읽은 페이지 — EXP·골드·스탯에 반영되지 않아요
+            </p>
+          )}
+        </div>
+
         {/* 장르 선택 */}
         <div>
           <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">장르 선택</p>
@@ -742,7 +766,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
       author: data.author,
       genre: data.genre,
       total_pages: data.total_pages,
-      read_pages: 0,
+      read_pages: data.prior_pages,
       status: "reading",
       isbn: data.isbn,
       publisher: data.publisher,
