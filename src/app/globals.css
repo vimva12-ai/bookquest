@@ -1,0 +1,29 @@
+@import "tailwindcss";
+
+/* 클래스 기반 다크모드 — .dark가 <html>에 붙어야 dark: 유틸리티 작동 */
+@variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg: #F7F8FC;
+  --surface: #FFFFFF;
+  --text: #333333;
+  --text-sub: #888888;
+  --point: #5B8DEF;
+  --gold: #FFB300;
+  --exp: #7C4DFF;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  /* 모바일 앱처럼 스크롤 바운스 제거 */
+  overscroll-behavior: none;
+}
+
+/* 스크롤바 숨기기 유틸리티 */
+.scrollbar-hide::-webkit-scrollbar { display: none; }
+.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+
+/* 픽셀아트 이미지 선명하게 렌더링 */
+.pixel-art { image-rendering: pixelated; image-rendering: crisp-edges; }
