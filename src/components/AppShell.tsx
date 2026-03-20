@@ -67,13 +67,13 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
   const refreshStats = useCallback(async () => {
     const { data: logs } = await supabase
       .from("reading_logs")
-      .select("pages_read, books(genre)")
+      .select("pages_read, genre")
       .eq("user_id", userId);
     if (!logs) return;
 
     const genrePages: Record<string, number> = { wisdom: 0, empathy: 0, insight: 0, creation: 0 };
     for (const log of logs) {
-      const genre = (log.books as { genre: string } | null)?.genre;
+      const genre = log.genre as string | null;
       if (genre && genre in genrePages) genrePages[genre] += log.pages_read;
     }
     const newStats = {
@@ -237,7 +237,7 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
   );
 
   return (
-    <div className="min-h-screen bg-[#F7F8FC] dark:bg-[#0F1117]">
+    <div className="min-h-screen bg-[#F5F2ED] dark:bg-[#1A1F1A]">
       <Header gold={character.profile.gold} level={character.profile.level} />
 
       <main className="pt-12 pb-16 px-4 min-h-screen">

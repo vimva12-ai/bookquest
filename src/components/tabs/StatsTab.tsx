@@ -47,7 +47,7 @@ function StreakCalendar({ readDates }: { readDates: Set<string> }) {
   const DAY_LABELS = ["일", "월", "화", "수", "목", "금", "토"];
 
   return (
-    <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+    <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
       <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-3">🌿 독서 스트릭</h3>
       <div className="flex gap-1">
         {/* 요일 레이블 */}
@@ -68,8 +68,8 @@ function StreakCalendar({ readDates }: { readDates: Set<string> }) {
                 className="w-3 h-3 rounded-sm transition-colors"
                 style={{
                   backgroundColor: day.hasRead
-                    ? "#66BB6A"
-                    : "var(--streak-empty, #F0F0F0)",
+                    ? "#5B8C5A"
+                    : "var(--streak-empty)",
                 }}
               />
             ))}
@@ -138,13 +138,10 @@ export function StatsTab({ userId, gold, streak }: Props) {
     return result;
   })();
 
-  // 장르 분포
+  // 장르 분포 — log.genre 직접 사용 (책 삭제 후에도 집계 유지)
   const genreData: GenreData[] = Object.entries(GENRE_INFO).map(([key, info]) => {
     const pages = logs
-      .filter((l) => {
-        const book = books.find((b) => b.id === l.book_id);
-        return book?.genre === key;
-      })
+      .filter((l) => l.genre === key)
       .reduce((s, l) => s + l.pages_read, 0);
     return { name: info.stat, value: pages, color: info.color };
   }).filter((d) => d.value > 0);
@@ -176,17 +173,17 @@ export function StatsTab({ userId, gold, streak }: Props) {
       {/* ── 요약 카드 4개 ── */}
       <div className="grid grid-cols-2 gap-3">
         <SummaryCard icon="📄" label="총 읽은 페이지" value={`${totalPages.toLocaleString()}p`}
-          bg="bg-blue-50 dark:bg-blue-950/20" />
+          bg="bg-[#EEF3EE] dark:bg-[#3D5A3E]/20" />
         <SummaryCard icon="📚" label="완독한 책" value={`${completedBooks}권`}
-          bg="bg-green-50 dark:bg-green-950/20" />
+          bg="bg-[#EEF4EE] dark:bg-[#2D4A2E]/20" />
         <SummaryCard icon="🔥" label="연속 독서" value={`${streak}일`}
-          bg="bg-orange-50 dark:bg-orange-950/20" />
+          bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
         <SummaryCard icon="🪙" label="보유 골드" value={`${gold.toLocaleString()}G`}
-          bg="bg-amber-50 dark:bg-amber-950/20" />
+          bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
       </div>
 
       {/* ── 주간 독서량 바 차트 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-4">📊 최근 7일 독서량</h3>
         {weeklyData.every((d) => d.pages === 0) ? (
           <p className="text-xs text-gray-400 text-center py-6">아직 기록이 없습니다</p>
@@ -199,14 +196,14 @@ export function StatsTab({ userId, gold, streak }: Props) {
                 contentStyle={{ borderRadius: 8, border: "none", fontSize: 12, boxShadow: "0 2px 8px rgba(0,0,0,0.1)" }}
                 formatter={(v) => [`${v}p`, "독서량"]}
               />
-              <Bar dataKey="pages" fill="#5B8DEF" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="pages" fill="#5B8C5A" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         )}
       </div>
 
       {/* ── 장르 분포 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-4">🎨 장르 분포</h3>
         {genreData.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">아직 기록이 없습니다</p>
@@ -247,7 +244,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
       <StreakCalendar readDates={readDates} />
 
       {/* ── 월별 완독 목록 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm mb-3">📅 월별 완독 목록</h3>
         {monthGroups.length === 0 ? (
           <p className="text-xs text-gray-400 text-center py-4">완독한 책이 없습니다</p>
@@ -260,7 +257,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
                   onClick={() => setSelectedMonth(selectedMonth === group.month ? null : group.month)}
                   className={`w-full flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-colors ${
                     selectedMonth === group.month
-                      ? "bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800/30"
+                      ? "bg-[#EEF3EE] dark:bg-[#3D5A3E]/20 border border-[#9ABA9A] dark:border-[#3D5A3E]/30"
                       : "bg-gray-50 dark:bg-gray-800 border border-gray-100 dark:border-gray-700"
                   }`}
                 >

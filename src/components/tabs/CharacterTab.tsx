@@ -49,7 +49,7 @@ function TitleModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/40" onClick={onClose}>
-      <div className="w-full max-w-md bg-white dark:bg-[#1A1D27] rounded-2xl p-5 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+      <div className="w-full max-w-md bg-white dark:bg-[#242B24] rounded-2xl p-5 shadow-xl max-h-[80vh] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
         <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-4">칭호 선택</h2>
 
         {/* 해금된 칭호 */}
@@ -119,7 +119,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* ── 캐릭터 카드 ── */}
-      <div className="bg-gradient-to-b from-indigo-50 to-white dark:from-[#1A1D30] dark:to-[#1A1D27] rounded-2xl p-5 border border-indigo-100 dark:border-indigo-900/30 shadow-sm flex flex-col items-center gap-3">
+      <div className="bg-gradient-to-b from-[#EEF3EE] to-white dark:from-[#1F2A1F] dark:to-[#242B24] rounded-2xl p-5 border border-[#D4E4D4] dark:border-[#3D5A3E]/30 shadow-sm flex flex-col items-center gap-3">
         {/* 칭호 — 클릭 시 선택 모달 */}
         <button
           onClick={() => setShowTitleModal(true)}
@@ -148,7 +148,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
           <div className="h-3 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
             <div
               className="h-full rounded-full transition-all duration-700"
-              style={{ width: `${expProgress * 100}%`, background: "linear-gradient(90deg, #7C4DFF, #9C27B0)" }}
+              style={{ width: `${expProgress * 100}%`, background: "linear-gradient(90deg, #5B8C5A, #3D5A3E)" }}
             />
           </div>
         </div>
@@ -161,7 +161,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
       </div>
 
       {/* ── 스탯 카드 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4 text-sm">📊 스탯</h3>
         <div className="flex flex-col gap-3">
           {(Object.entries(GENRE_INFO) as [keyof typeof GENRE_INFO, typeof GENRE_INFO[keyof typeof GENRE_INFO]][]).map(([key, info]) => (
@@ -174,7 +174,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
       </div>
 
       {/* ── 장착 장비 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4 text-sm">⚔️ 장비</h3>
         <div className="grid grid-cols-3 gap-2">
           {EQUIPMENT_SLOTS.map((slot) => {
@@ -198,7 +198,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
       </div>
 
       {/* ── 해금 칭호 목록 ── */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
         <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-3 text-sm">
           🎖️ 획득한 칭호 <span className="text-gray-400 font-normal">({unlockedIds.length}개)</span>
         </h3>
@@ -225,9 +225,9 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
       </div>
 
       {/* ── 성장 가이드 ── */}
-      <div className="bg-orange-50 dark:bg-orange-950/20 rounded-2xl p-4 border border-orange-100 dark:border-orange-900/30">
-        <h3 className="font-bold text-orange-700 dark:text-orange-400 mb-2 text-sm">💡 성장 가이드</h3>
-        <ul className="text-xs text-orange-600 dark:text-orange-400/80 space-y-1 list-disc list-inside">
+      <div className="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20 rounded-2xl p-4 border border-[#E8D4B8] dark:border-[#3A2E1A]/30">
+        <h3 className="font-bold text-[#8B6F47] dark:text-[#A68B5B] mb-2 text-sm">💡 성장 가이드</h3>
+        <ul className="text-xs text-[#8B6F47]/90 dark:text-[#A68B5B]/80 space-y-1 list-disc list-inside">
           <li>하루 40p 읽으면 약 1개월 안에 Lv.10 달성</li>
           <li>비문학 읽으면 지혜(WIS) +1 / 50p마다</li>
           <li>완독 시 EXP +50, 골드 +30 보너스!</li>

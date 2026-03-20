@@ -4,13 +4,18 @@
 @variant dark (&:where(.dark, .dark *));
 
 :root {
-  --bg: #F7F8FC;
+  --bg: #F5F2ED;
   --surface: #FFFFFF;
-  --text: #333333;
-  --text-sub: #888888;
-  --point: #5B8DEF;
-  --gold: #FFB300;
-  --exp: #7C4DFF;
+  --text: #2D3A2E;
+  --text-sub: #6B7C6B;
+  --point: #3D5A3E;
+  --gold: #C4933F;
+  --exp: #5B8C5A;
+  --streak-empty: #E8E4DD;
+}
+
+.dark {
+  --streak-empty: #2A342A;
 }
 
 body {

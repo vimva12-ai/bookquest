@@ -57,7 +57,8 @@ export interface Book {
 export interface ReadingLog {
   id: string;
   user_id: string;
-  book_id: string;
+  book_id: string | null;  // 책 삭제 시 null로 변경됨 (SET NULL)
+  genre: Genre | null;     // 스탯 계산에 사용 (책 삭제 후에도 유지)
   date: string;
   pages_read: number;
   from_page: number;

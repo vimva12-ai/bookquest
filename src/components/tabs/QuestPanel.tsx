@@ -14,14 +14,14 @@ function QuestCard({ quest }: { quest: Quest }) {
     <div
       className={`rounded-xl p-3 border transition-all ${
         done
-          ? "bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/30"
-          : "bg-white dark:bg-[#22252F] border-gray-100 dark:border-gray-800"
+          ? "bg-[#EEF4EE] dark:bg-[#3D5A3E]/20 border-[#9ABA9A] dark:border-[#3D5A3E]/30"
+          : "bg-white dark:bg-[#2A3229] border-gray-100 dark:border-gray-800"
       }`}
     >
       <div className="flex items-center justify-between mb-1.5">
         <div className="flex items-center gap-2">
           <span className="text-base">{quest.icon}</span>
-          <span className={`text-xs font-medium ${done ? "text-green-700 dark:text-green-400 line-through opacity-70" : "text-gray-700 dark:text-gray-300"}`}>
+          <span className={`text-xs font-medium ${done ? "text-[#3D5A3E] dark:text-[#6BA368] line-through opacity-70" : "text-gray-700 dark:text-gray-300"}`}>
             {quest.title}
           </span>
         </div>
@@ -34,7 +34,7 @@ function QuestCard({ quest }: { quest: Quest }) {
       <div className="flex items-center gap-2">
         <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
-            className={`h-full rounded-full transition-all ${done ? "bg-green-400" : "bg-blue-400"}`}
+            className={`h-full rounded-full transition-all ${done ? "bg-[#5B8C5A]" : "bg-[#4A7A8A]"}`}
             style={{ width: `${percent}%` }}
           />
         </div>
@@ -60,10 +60,16 @@ export function QuestPanel({ quests }: Props) {
     monthly: "월간",
   };
 
+  const TAB_COLORS: Record<QuestTab, string> = {
+    daily: "#5B8C5A",
+    weekly: "#4A7A8A",
+    monthly: "#8B6F47",
+  };
+
   const currentQuests = quests[tab];
 
   return (
-    <div className="bg-gradient-to-br from-amber-50 to-yellow-50 dark:from-[#2A2518] dark:to-[#252218] rounded-2xl border border-amber-100 dark:border-amber-900/30 overflow-hidden">
+    <div className="bg-gradient-to-br from-[#EEF3EE] to-[#E8EDE8] dark:from-[#1F2A1F] dark:to-[#1A231A] rounded-2xl border border-[#D4E4D4] dark:border-[#3D5A3E]/30 overflow-hidden">
       {/* 헤더 */}
       <button
         onClick={() => setOpen((v) => !v)}
@@ -71,7 +77,7 @@ export function QuestPanel({ quests }: Props) {
       >
         <div className="flex items-center gap-2">
           <span className="text-base">📋</span>
-          <span className="font-bold text-amber-800 dark:text-amber-400 text-sm">퀘스트</span>
+          <span className="font-bold text-[#2D3A2E] dark:text-[#6BA368] text-sm">퀘스트</span>
         </div>
         <span className="text-gray-400 text-xs">{open ? "▲" : "▼"}</span>
       </button>
@@ -86,9 +92,10 @@ export function QuestPanel({ quests }: Props) {
                 onClick={() => setTab(t)}
                 className={`flex-1 py-1 rounded-lg text-xs font-medium transition-colors ${
                   tab === t
-                    ? "bg-amber-400 dark:bg-amber-600 text-white"
-                    : "bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 hover:bg-amber-200 dark:hover:bg-amber-800/30"
+                    ? "text-white"
+                    : "bg-[#E8EDE8] dark:bg-[#2A342A] text-[#3D5A3E] dark:text-[#6BA368] hover:bg-[#D8E8D8] dark:hover:bg-[#2A3A2A]"
                 }`}
+                style={tab === t ? { backgroundColor: TAB_COLORS[t] } : {}}
               >
                 {TAB_LABELS[t]}
               </button>

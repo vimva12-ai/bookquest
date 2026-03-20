@@ -58,8 +58,8 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
               onClick={() => setActiveSlot(slot.id as EquipmentSlot)}
               className={`flex flex-col items-center gap-1 py-3 rounded-xl border transition-all ${
                 isActive
-                  ? "border-blue-400 bg-blue-50 dark:bg-blue-950/20"
-                  : "border-gray-100 dark:border-gray-800 bg-white dark:bg-[#1A1D27]"
+                  ? "border-[#5B8C5A] bg-[#EEF4EE] dark:bg-[#3D5A3E]/20"
+                  : "border-gray-100 dark:border-gray-800 bg-white dark:bg-[#242B24]"
               }`}
             >
               <span className="text-xl">{slot.icon}</span>
@@ -97,11 +97,11 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
           return (
             <div
               key={tier.id}
-              className={`bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border transition-all ${
+              className={`bg-white dark:bg-[#242B24] rounded-2xl p-4 border transition-all ${
                 isOwned
                   ? "border-gray-100 dark:border-gray-800 opacity-50"
                   : isNext
-                  ? "border-blue-200 dark:border-blue-800/50 shadow-sm"
+                  ? "border-[#9ABA9A] dark:border-[#3D5A3E]/50 shadow-sm"
                   : "border-gray-100 dark:border-gray-800 opacity-40"  // 잠긴 등급
               }`}
             >
@@ -135,7 +135,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
                       disabled={!canBuy || buying}
                       className={`px-3 py-1.5 rounded-xl text-xs font-bold text-white transition-all ${
                         canBuy
-                          ? "bg-blue-500 hover:bg-blue-600 active:scale-95"
+                          ? "bg-[#3D5A3E] hover:bg-[#2D4A2E] active:scale-95"
                           : "bg-gray-300 dark:bg-gray-700 cursor-not-allowed"
                       }`}
                     >

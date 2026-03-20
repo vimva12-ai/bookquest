@@ -29,7 +29,7 @@ export function Header({ gold, level }: Props) {
   }
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-40 h-12 flex items-center justify-between px-4 bg-white dark:bg-[#1A1D27] border-b border-gray-100 dark:border-gray-800 shadow-sm">
+    <header className="fixed top-0 left-0 right-0 z-40 h-12 flex items-center justify-between px-4 bg-white dark:bg-[#242B24] border-b border-[#E8E4DD] dark:border-[#333D33] shadow-sm">
       {/* 로고 */}
       <div className="flex items-center gap-2">
         <span className="text-xl">⚔️</span>
@@ -49,8 +49,8 @@ export function Header({ gold, level }: Props) {
         </div>
 
         {/* 레벨 */}
-        <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1 rounded-full">
-          <span className="text-xs font-bold text-blue-600 dark:text-blue-400">
+        <div className="flex items-center gap-1 bg-[#EEF3EE] dark:bg-[#3D5A3E]/25 px-2.5 py-1 rounded-full">
+          <span className="text-xs font-bold text-[#3D5A3E] dark:text-[#6BA368]">
             Lv.{level}
           </span>
         </div>

@@ -14,17 +14,17 @@ export function AchievementsTab({ stats }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* 달성 요약 */}
-      <div className="bg-white dark:bg-[#1A1D27] rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
+      <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800 shadow-sm">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm">🏆 업적</h3>
-          <span className="text-sm font-bold text-blue-500">
+          <span className="text-sm font-bold text-[#3D5A3E] dark:text-[#6BA368]">
             {doneCount} / {total}
           </span>
         </div>
         {/* 전체 진행 바 */}
         <div className="h-2 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
           <div
-            className="h-full bg-blue-400 rounded-full transition-all duration-700"
+            className="h-full bg-[#5B8C5A] rounded-full transition-all duration-700"
             style={{ width: `${(doneCount / total) * 100}%` }}
           />
         </div>
@@ -43,8 +43,8 @@ export function AchievementsTab({ stats }: Props) {
               key={achievement.id}
               className={`rounded-2xl p-4 border transition-all ${
                 done
-                  ? "bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-950/20 dark:to-emerald-950/20 border-green-200 dark:border-green-800/30"
-                  : "bg-white dark:bg-[#1A1D27] border-gray-100 dark:border-gray-800"
+                  ? "bg-gradient-to-r from-[#EEF4EE] to-[#EBF3EB] dark:from-[#3D5A3E]/20 dark:to-[#2D4A2E]/20 border-[#9ABA9A] dark:border-[#3D5A3E]/30"
+                  : "bg-white dark:bg-[#242B24] border-gray-100 dark:border-gray-800"
               }`}
             >
               <div className="flex items-start gap-3">
@@ -52,7 +52,7 @@ export function AchievementsTab({ stats }: Props) {
                 <div
                   className={`text-2xl w-10 h-10 flex items-center justify-center rounded-xl flex-shrink-0 ${
                     done
-                      ? "bg-green-100 dark:bg-green-900/30"
+                      ? "bg-[#D8EED8] dark:bg-[#3D5A3E]/30"
                       : "bg-gray-100 dark:bg-gray-800 opacity-60"
                   }`}
                 >
@@ -61,7 +61,7 @@ export function AchievementsTab({ stats }: Props) {
 
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between mb-0.5">
-                    <h4 className={`font-semibold text-sm ${done ? "text-green-700 dark:text-green-400" : "text-gray-700 dark:text-gray-300"}`}>
+                    <h4 className={`font-semibold text-sm ${done ? "text-[#3D5A3E] dark:text-[#6BA368]" : "text-gray-700 dark:text-gray-300"}`}>
                       {achievement.title}
                       {done && <span className="ml-1 text-xs">✓</span>}
                     </h4>
@@ -80,7 +80,7 @@ export function AchievementsTab({ stats }: Props) {
                     <div className="flex items-center gap-2">
                       <div className="flex-1 h-1.5 bg-gray-100 dark:bg-gray-700 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-blue-300 dark:bg-blue-600 rounded-full transition-all"
+                          className="h-full bg-[#7AAA7A] dark:bg-[#5B8C5A] rounded-full transition-all"
                           style={{ width: `${percent}%` }}
                         />
                       </div>

@@ -13,7 +13,7 @@ export const GENRE_INFO: Record<
     sublabel: "과학/철학/역사/인문",
     stat: "지혜",
     statKey: "wisdom",
-    color: "#5B8DEF",
+    color: "#4A7A8A",
     icon: "📘",
   },
   empathy: {
@@ -21,7 +21,7 @@ export const GENRE_INFO: Record<
     sublabel: "소설/에세이/시/전기",
     stat: "공감",
     statKey: "empathy",
-    color: "#66BB6A",
+    color: "#5B8C5A",
     icon: "📗",
   },
   insight: {
@@ -29,7 +29,7 @@ export const GENRE_INFO: Record<
     sublabel: "심리/경영/경제/처세",
     stat: "통찰",
     statKey: "insight",
-    color: "#FFA726",
+    color: "#C4933F",
     icon: "📙",
   },
   creation: {
@@ -37,7 +37,7 @@ export const GENRE_INFO: Record<
     sublabel: "예술/판타지/SF/만화",
     stat: "창조",
     statKey: "creation",
-    color: "#EF5350",
+    color: "#9B6B5A",
     icon: "📕",
   },
 };

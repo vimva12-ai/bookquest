@@ -25,7 +25,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F7F8FC] dark:bg-[#0F1117] p-6">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-[#F5F2ED] dark:bg-[#1A1F1A] p-6">
       {/* 앱 로고 & 타이틀 */}
       <div className="text-center mb-10">
         <div className="text-6xl mb-4">⚔️📖</div>
@@ -39,7 +39,7 @@ export default function LoginPage() {
       </div>
 
       {/* 로그인 카드 */}
-      <div className="w-full max-w-sm bg-white dark:bg-[#1A1D27] rounded-2xl shadow-md p-8 flex flex-col items-center gap-4">
+      <div className="w-full max-w-sm bg-white dark:bg-[#242B24] rounded-2xl shadow-md p-8 flex flex-col items-center gap-4">
         <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">
           구글 계정으로 시작하세요
         </p>

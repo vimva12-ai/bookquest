@@ -24,7 +24,7 @@ interface Props {
 
 export function BottomNav({ activeTab, onChange }: Props) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 flex bg-white dark:bg-[#1A1D27] border-t border-gray-100 dark:border-gray-800 shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-40 h-16 flex bg-white dark:bg-[#242B24] border-t border-[#E8E4DD] dark:border-[#333D33] shadow-[0_-2px_8px_rgba(0,0,0,0.04)]">
       {TABS.map((tab) => {
         const isActive = activeTab === tab.id;
         return (
@@ -33,8 +33,8 @@ export function BottomNav({ activeTab, onChange }: Props) {
             onClick={() => onChange(tab.id)}
             className={`flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors ${
               isActive
-                ? "text-blue-500 dark:text-blue-400"
-                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
+                ? "text-[#3D5A3E] dark:text-[#6BA368]"
+                : "text-[#A3AEA3] dark:text-[#556655] hover:text-[#6B7C6B] dark:hover:text-[#8A9A8A]"
             }`}
             aria-label={tab.label}
             aria-current={isActive ? "page" : undefined}
@@ -45,7 +45,7 @@ export function BottomNav({ activeTab, onChange }: Props) {
             </span>
             {/* 활성 탭 인디케이터 */}
             {isActive && (
-              <span className="absolute top-0 w-8 h-0.5 bg-blue-500 dark:bg-blue-400 rounded-full" />
+              <span className="absolute top-0 w-8 h-0.5 bg-[#3D5A3E] dark:bg-[#6BA368] rounded-full" />
             )}
           </button>
         );
