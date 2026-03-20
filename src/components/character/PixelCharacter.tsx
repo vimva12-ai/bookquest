@@ -90,10 +90,11 @@ export function PixelCharacter({ equipment, size = 144 }: Props) {
       style={{ width: size, height: size, position: "relative" }}
       aria-label="캐릭터"
     >
-      {/* ── 망토 SVG (맨 뒤, z-0) ── */}
+      {/* ── 망토 SVG (맨 뒤, z-0) — 어깨에 밀착된 망토 ── */}
       {cloakColor && (
         <svg
           viewBox="0 0 64 64"
+          shapeRendering="crispEdges"
           style={{
             position: "absolute",
             inset: 0,
@@ -102,30 +103,48 @@ export function PixelCharacter({ equipment, size = 144 }: Props) {
             zIndex: 0,
           }}
         >
-          {/* 왼쪽 자락 */}
-          <path
-            d="M 21 24 L 12 52 L 24 47 Z"
-            fill={cloakColor}
-            opacity={0.85}
-          />
-          {/* 오른쪽 자락 */}
-          <path
-            d="M 43 24 L 52 52 L 40 47 Z"
-            fill={cloakColor}
-            opacity={0.85}
-          />
-          {/* 뒤쪽 (몸 사이로 살짝 보임) */}
-          <rect
-            x="23" y="30" width="18" height="20" rx="2"
-            fill={cloakColor}
-            opacity={0.25}
-          />
-          {/* 어깨 걸이 */}
-          <rect
-            x="20" y="22" width="24" height="4" rx="2"
-            fill={cloakColor}
-            opacity={0.6}
-          />
+          {/* ─ 왼쪽 자락 (y=32 시작, 윗부분 둥글게 테이퍼링) ─ */}
+          <rect x="20" y="32" width="2" height="1" fill={cloakColor} />
+          <rect x="19" y="33" width="3" height="1" fill={cloakColor} />
+          <rect x="18" y="34" width="4" height="1" fill={cloakColor} />
+          <rect x="17" y="35" width="5" height="2" fill={cloakColor} opacity={0.95} />
+          <rect x="16" y="37" width="5" height="3" fill={cloakColor} opacity={0.9} />
+          <rect x="15" y="40" width="6" height="3" fill={cloakColor} opacity={0.85} />
+          <rect x="14" y="43" width="7" height="4" fill={cloakColor} opacity={0.85} />
+          <rect x="14" y="47" width="7" height="3" fill={cloakColor} opacity={0.8} />
+          <rect x="14" y="50" width="7" height="3" fill={cloakColor} opacity={0.8} />
+          <rect x="14" y="53" width="7" height="2" fill={cloakColor} opacity={0.75} />
+          <rect x="15" y="55" width="6" height="2" fill={cloakColor} opacity={0.7} />
+          <rect x="16" y="57" width="5" height="1" fill={cloakColor} opacity={0.6} />
+          {/* 왼쪽 주름 하이라이트 */}
+          <rect x="20" y="35" width="1" height="10" fill="white" opacity={0.18} />
+          <rect x="19" y="45" width="1" height="8" fill="white" opacity={0.12} />
+          {/* 왼쪽 주름 그림자 */}
+          <rect x="16" y="37" width="1" height="16" fill="black" opacity={0.12} />
+
+          {/* ─ 오른쪽 자락 (y=32 시작, 윗부분 둥글게 테이퍼링) ─ */}
+          <rect x="42" y="32" width="2" height="1" fill={cloakColor} />
+          <rect x="42" y="33" width="3" height="1" fill={cloakColor} />
+          <rect x="42" y="34" width="4" height="1" fill={cloakColor} />
+          <rect x="42" y="35" width="5" height="2" fill={cloakColor} opacity={0.95} />
+          <rect x="43" y="37" width="5" height="3" fill={cloakColor} opacity={0.9} />
+          <rect x="43" y="40" width="6" height="3" fill={cloakColor} opacity={0.85} />
+          <rect x="43" y="43" width="7" height="4" fill={cloakColor} opacity={0.85} />
+          <rect x="43" y="47" width="7" height="3" fill={cloakColor} opacity={0.8} />
+          <rect x="43" y="50" width="7" height="3" fill={cloakColor} opacity={0.8} />
+          <rect x="43" y="53" width="7" height="2" fill={cloakColor} opacity={0.75} />
+          <rect x="43" y="55" width="6" height="2" fill={cloakColor} opacity={0.7} />
+          <rect x="43" y="57" width="5" height="1" fill={cloakColor} opacity={0.6} />
+          {/* 오른쪽 주름 그림자 */}
+          <rect x="42" y="35" width="1" height="8" fill="black" opacity={0.15} />
+          <rect x="44" y="43" width="1" height="14" fill="black" opacity={0.1} />
+          {/* 오른쪽 주름 하이라이트 */}
+          <rect x="48" y="43" width="1" height="14" fill="white" opacity={0.1} />
+
+          {/* ─ 뒤쪽 밑단 (몸 아래로 보이는 부분, 발끝까지) ─ */}
+          <rect x="22" y="52" width="20" height="3" fill={cloakColor} opacity={0.4} />
+          <rect x="23" y="55" width="18" height="2" fill={cloakColor} opacity={0.35} />
+          <rect x="24" y="57" width="16" height="1" fill={cloakColor} opacity={0.25} />
         </svg>
       )}
 
@@ -147,10 +166,11 @@ export function PixelCharacter({ equipment, size = 144 }: Props) {
         />
       ))}
 
-      {/* ── 무기 SVG (맨 앞) ── */}
+      {/* ── 무기 SVG (맨 앞) — 오른손(x≈21-23, y≈37-40)에 쥔 롱소드, 전체 +6px ── */}
       {weaponColor && (
         <svg
           viewBox="0 0 64 64"
+          shapeRendering="crispEdges"
           style={{
             position: "absolute",
             inset: 0,
@@ -159,38 +179,50 @@ export function PixelCharacter({ equipment, size = 144 }: Props) {
             zIndex: layers.length + 1,
           }}
         >
-          <g transform="rotate(-20, 17, 36)">
-            {/* 칼날 */}
-            <rect
-              x="15" y="14" width="4" height="24" rx="1"
-              fill={weaponColor}
-            />
-            {/* 칼날 하이라이트 */}
-            <rect
-              x="18" y="16" width="1" height="20"
-              fill="white" opacity={0.35}
-            />
-            {/* 칼날 끝 (삼각형) */}
-            <polygon
-              points="15,14 19,14 17,10"
-              fill={weaponColor}
-            />
-            {/* 가드 */}
-            <rect
-              x="11" y="38" width="12" height="3" rx="1"
-              fill={weaponColor} opacity={0.85}
-            />
-            {/* 그립 */}
-            <rect
-              x="15" y="41" width="4" height="8" rx="1"
-              fill="#6B4423"
-            />
-            {/* 폼멜 */}
-            <circle
-              cx="17" cy="50" r="2.5"
-              fill={weaponColor} opacity={0.7}
-            />
-          </g>
+          {/* ─ 칼날 끝 (뾰족한 팁) ─ */}
+          <rect x="20" y="15" width="1" height="2" fill={weaponColor} />
+          <rect x="19" y="17" width="3" height="2" fill={weaponColor} />
+
+          {/* ─ 칼날 몸체 (3px 너비) ─ */}
+          <rect x="19" y="19" width="3" height="17" fill={weaponColor} />
+          {/* 칼날 왼쪽 날 하이라이트 */}
+          <rect x="19" y="19" width="1" height="17" fill="white" opacity={0.3} />
+          {/* 칼날 오른쪽 그림자 */}
+          <rect x="21" y="19" width="1" height="17" fill="black" opacity={0.15} />
+          {/* 혈조 (fullerㅡ중앙 홈) */}
+          <rect x="20" y="20" width="1" height="14" fill="white" opacity={0.12} />
+          {/* 칼날 하단 넓어지는 부분 */}
+          <rect x="18" y="36" width="5" height="2" fill={weaponColor} />
+          <rect x="18" y="36" width="1" height="2" fill="white" opacity={0.2} />
+          <rect x="22" y="36" width="1" height="2" fill="black" opacity={0.12} />
+
+          {/* ─ 크로스가드 (장식적인 십자 가드) ─ */}
+          <rect x="14" y="38" width="13" height="2" fill={weaponColor} opacity={0.95} />
+          {/* 가드 윗면 하이라이트 */}
+          <rect x="14" y="38" width="13" height="1" fill="white" opacity={0.25} />
+          {/* 가드 양끝 장식 */}
+          <rect x="13" y="38" width="1" height="2" fill={weaponColor} opacity={0.7} />
+          <rect x="27" y="38" width="1" height="2" fill={weaponColor} opacity={0.7} />
+          {/* 가드 중앙 보석 */}
+          <rect x="20" y="38" width="1" height="2" fill="white" opacity={0.3} />
+
+          {/* ─ 그립 (손 위치에 맞춤, 가죽 감기 패턴) ─ */}
+          <rect x="19" y="40" width="3" height="1" fill="#4A2E14" />
+          <rect x="19" y="41" width="3" height="1" fill="#6B4423" />
+          <rect x="19" y="42" width="3" height="1" fill="#4A2E14" />
+          <rect x="19" y="43" width="3" height="1" fill="#6B4423" />
+          <rect x="19" y="44" width="3" height="1" fill="#4A2E14" />
+          <rect x="19" y="45" width="3" height="1" fill="#6B4423" />
+          <rect x="19" y="46" width="3" height="1" fill="#4A2E14" />
+          {/* 그립 왼쪽 하이라이트 */}
+          <rect x="19" y="40" width="1" height="7" fill="white" opacity={0.08} />
+
+          {/* ─ 폼멜 (손잡이 끝 장식) ─ */}
+          <rect x="18" y="47" width="5" height="2" fill={weaponColor} opacity={0.85} />
+          <rect x="19" y="49" width="3" height="1" fill={weaponColor} opacity={0.65} />
+          {/* 폼멜 하이라이트 */}
+          <rect x="18" y="47" width="5" height="1" fill="white" opacity={0.2} />
+          <rect x="20" y="47" width="1" height="1" fill="white" opacity={0.15} />
         </svg>
       )}
     </div>
