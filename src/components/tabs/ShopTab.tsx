@@ -63,7 +63,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
                   : "border-gray-100 dark:border-gray-800 bg-white dark:bg-[#242B24]"
               }`}
             >
-              <EquipmentIcon slotId={slot.id} size={28} />
+              <EquipmentIcon slotId={slot.id} size={28} tier={equippedTier} />
               <span className="text-xs text-gray-500 dark:text-gray-400">{slot.label}</span>
               {tierInfo ? (
                 <span
@@ -82,7 +82,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
 
       {/* 선택한 부위 안내 */}
       <div className="flex items-center justify-center gap-2">
-        <EquipmentIcon slotId={activeSlot} size={20} />
+        <EquipmentIcon slotId={activeSlot} size={20} tier={currentTier} />
         <span className="text-sm font-medium text-gray-600 dark:text-gray-400">
           {EQUIPMENT_SLOTS.find((s) => s.id === activeSlot)?.label} 장비
         </span>

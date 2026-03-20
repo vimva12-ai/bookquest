@@ -183,7 +183,7 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
             const tierInfo = EQUIPMENT_TIERS.find((t) => t.id === tier);
             return (
               <div key={slot.id} className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                <EquipmentIcon slotId={slot.id} size={24} />
+                <EquipmentIcon slotId={slot.id} size={24} tier={tier} />
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">{slot.label}</span>
                 {tierInfo ? (
                   <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: TIER_COLOR[tierInfo.id] }}>

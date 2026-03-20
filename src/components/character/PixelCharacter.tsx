@@ -29,6 +29,7 @@ function getCharacterLayers(equipment: Partial<UserEquipment>): string[] {
   layers.push(`${BASE}/BODY_male.png`);
   layers.push(`${BASE}/LEGS_pants_greenish.png`);
   layers.push(`${BASE}/TORSO_leather_armor_shirt_white.png`);
+  layers.push(`${BASE}/HEAD_hair_blonde.png`);
 
   // ── 갑옷 (armor) ──
   const armorIdx = tierIdx(equipment.armor);
