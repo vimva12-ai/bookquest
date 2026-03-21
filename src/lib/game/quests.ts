@@ -1,6 +1,6 @@
 // 이 파일이 하는 일: 날짜 시드 기반 퀘스트 자동 생성 (PRD 4-6 기반)
 
-import type { Book, ReadingLog } from "@/types/database";
+import type { Book, ReadingLog, ReadingNote } from "@/types/database";
 
 export interface Quest {
   id: string;
@@ -174,14 +174,17 @@ interface QuestContext {
   monthGenres: number;
   monthCompleted: number;
   streak: number;
-  bookPagesByTitle: Map<string, number>; // 오늘 책별 읽은 페이지
-  weekBookPagesByTitle: Map<string, number>; // 이번 주 책별 읽은 페이지
+  bookPagesByTitle: Map<string, number>;
+  weekBookPagesByTitle: Map<string, number>;
+  todayMemoCount: number;
+  weekMemoCount: number;
 }
 
 function buildQuestContext(
   logs: ReadingLog[],
   books: Book[],
   streak: number,
+  notes: ReadingNote[],
 ): QuestContext {
   const now = new Date();
   const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
@@ -246,6 +249,15 @@ function buildQuestContext(
     (b) => b.status === "complete" && b.completed_at && b.completed_at.slice(0, 7) === monthPrefix
   ).length;
 
+  // 메모 카운트
+  let todayMemoCount = 0;
+  let weekMemoCount = 0;
+  for (const note of notes) {
+    const noteDate = note.created_at.slice(0, 10);
+    if (noteDate === todayStr) todayMemoCount++;
+    if (noteDate >= weekStartStr && noteDate <= todayStr) weekMemoCount++;
+  }
+
   return {
     todayPages,
     todayLogCount,
@@ -261,6 +273,8 @@ function buildQuestContext(
     streak,
     bookPagesByTitle,
     weekBookPagesByTitle,
+    todayMemoCount,
+    weekMemoCount,
   };
 }
 
@@ -283,7 +297,7 @@ function computeSingleProgress(quest: Quest, ctx: QuestContext): number {
     case "record_today":
       return ctx.todayLogCount > 0 ? 1 : 0;
     case "memo":
-      return 0; // Phase 3
+      return ctx.todayMemoCount;
     case "login":
       return 1;
     case "genre_read":
@@ -301,7 +315,7 @@ function computeSingleProgress(quest: Quest, ctx: QuestContext): number {
     case "weekly_genre_variety":
       return ctx.weekGenres;
     case "weekly_memo":
-      return 0; // Phase 3
+      return ctx.weekMemoCount;
     case "weekly_specific": {
       const title = extractBookTitle(quest.title);
       return title ? (ctx.weekBookPagesByTitle.get(title) || 0) : 0;
@@ -337,8 +351,9 @@ export function applyQuestProgress(
   logs: ReadingLog[],
   books: Book[],
   streak: number,
+  notes: ReadingNote[] = [],
 ): QuestSet {
-  const ctx = buildQuestContext(logs, books, streak);
+  const ctx = buildQuestContext(logs, books, streak, notes);
 
   function applyToList(list: Quest[]): Quest[] {
     return list.map((q) => {

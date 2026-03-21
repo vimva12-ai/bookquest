@@ -124,6 +124,7 @@ export interface ReadingNote {
   book_id: string;
   content: string;
   page: number | null;
+  is_public: boolean;
   created_at: string;
 }
 

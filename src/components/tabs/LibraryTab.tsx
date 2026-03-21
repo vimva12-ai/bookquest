@@ -11,6 +11,7 @@ import {
   GOLD_PER_PAGE,
   GOLD_BONUS_COMPLETE,
 } from "@/lib/game/exp";
+import { MemoModal } from "@/components/tabs/MemoModal";
 
 // ─── 카카오 API 응답 타입 ────────────────────────────────
 interface KakaoBook {
@@ -124,10 +125,12 @@ function BookCard({
   book,
   onRecordPage,
   onDeleteBook,
+  onMemo,
 }: {
   book: Book;
   onRecordPage: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
+  onMemo: (book: Book) => void;
 }) {
   const info = GENRE_INFO[book.genre];
   const progress = book.total_pages > 0 ? (book.read_pages / book.total_pages) * 100 : 0;
@@ -210,12 +213,20 @@ function BookCard({
               완독 ✓
             </span>
           )}
-          <button
-            onClick={() => onDeleteBook(book)}
-            className="text-[10px] text-[#A3AEA3] dark:text-[#556655] hover:text-[#B85C4A] dark:hover:text-[#C97060] transition-colors"
-          >
-            삭제
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => onMemo(book)}
+              className="text-[10px] text-[#4A7A8A] dark:text-[#6BA3A3] hover:text-[#3A6A7A] transition-colors"
+            >
+              메모
+            </button>
+            <button
+              onClick={() => onDeleteBook(book)}
+              className="text-[10px] text-[#A3AEA3] dark:text-[#556655] hover:text-[#B85C4A] dark:hover:text-[#C97060] transition-colors"
+            >
+              삭제
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -746,17 +757,19 @@ interface Props {
   userId: string;
   onBooksChange: () => void;
   onStatChange: (expDelta: number, goldDelta: number, streakDelta: number) => void;
+  onMemoChange?: () => void;
 }
 
 type FilterType = "all" | "reading" | "complete" | "wishlist";
 
-export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props) {
+export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoChange }: Props) {
   const supabase = getSupabaseBrowserClient();
   const [filter, setFilter] = useState<FilterType>("all");
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
   const [toast, setToast] = useState("");
   const [addBookOpen, setAddBookOpen] = useState(false);
+  const [memoBook, setMemoBook] = useState<Book | null>(null);
 
   // 토스트 자동 제거
   useEffect(() => {
@@ -908,7 +921,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
           </div>
         ) : (
           filtered.map((book) => (
-            <BookCard key={book.id} book={book} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} />
+            <BookCard key={book.id} book={book} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} />
           ))
         )}
       </div>
@@ -935,6 +948,16 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
           book={deletingBook}
           onClose={() => setDeletingBook(null)}
           onConfirm={handleDeleteBook}
+        />
+      )}
+
+      {/* 메모 모달 */}
+      {memoBook && (
+        <MemoModal
+          book={memoBook}
+          userId={userId}
+          onClose={() => setMemoBook(null)}
+          onMemoCountChange={onMemoChange}
         />
       )}
 

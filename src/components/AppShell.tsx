@@ -1,7 +1,7 @@
 // 이 파일이 하는 일: 전체 앱 UI 셸 — 헤더, 탭, 상태 관리, 게임 로직 연결
 "use client";
 
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Header } from "@/components/ui/Header";
 import { BottomNav, type TabId } from "@/components/ui/BottomNav";
 import { LibraryTab } from "@/components/tabs/LibraryTab";
@@ -29,6 +29,7 @@ import type {
   EquipmentSlot,
   EquipmentTier,
   ReadingLog,
+  ReadingNote,
   UserEquipment,
 } from "@/types/database";
 
@@ -56,6 +57,7 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
   const [character, setCharacter] = useState(initialCharacter);
   const [books, setBooks] = useState(initialBooks);
   const [logs, setLogs] = useState(initialLogs);
+  const [notes, setNotes] = useState<ReadingNote[]>([]);
 
   // 책 목록 새로고침
   const refreshBooks = useCallback(async () => {
@@ -75,6 +77,18 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
       .eq("user_id", userId);
     if (data) setLogs(data as ReadingLog[]);
   }, [supabase, userId]);
+
+  // 메모 새로고침 (퀘스트 연동용)
+  const refreshNotes = useCallback(async () => {
+    const { data } = await supabase
+      .from("reading_notes")
+      .select("*")
+      .eq("user_id", userId);
+    if (data) setNotes(data as ReadingNote[]);
+  }, [supabase, userId]);
+
+  // 초기 메모 로드
+  useEffect(() => { refreshNotes(); }, [refreshNotes]);
 
   // 스탯 재조회 (reading_logs 집계)
   const refreshStats = useCallback(async () => {
@@ -251,8 +265,9 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
       logs,
       books,
       character.profile.streak,
+      notes,
     ),
-    [books, logs, character.profile.streak]
+    [books, logs, character.profile.streak, notes]
   );
 
   return (
@@ -270,6 +285,7 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
                 userId={userId}
                 onBooksChange={refreshBooks}
                 onStatChange={handleStatChange}
+                onMemoChange={refreshNotes}
               />
             </div>
           )}
