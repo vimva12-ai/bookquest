@@ -81,7 +81,7 @@ function StreakCalendar({ readDates }: { readDates: Set<string> }) {
 }
 
 // ─── 기간별 통계 타입 ────────────────────────────────────
-type Period = "weekly" | "monthly" | "yearly";
+type Period = "daily" | "weekly" | "monthly" | "yearly";
 interface PeriodStat { label: string; pages: number }
 
 // ─── 통계 탭 메인 ────────────────────────────────────────
@@ -97,7 +97,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const [logs, setLogs] = useState<ReadingLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
-  const [period, setPeriod] = useState<Period>("weekly");
+  const [period, setPeriod] = useState<Period>("daily");
 
   useEffect(() => {
     async function load() {
@@ -143,6 +143,19 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const todayMonth = today.getMonth(); // 0-based
 
   // ── 기간별 차트 데이터 & 증감 계산 ────────────────────
+
+  // 일일 — 최근 7일 막대 (오늘 강조), 어제 대비
+  const dailyChart: PeriodStat[] = [];
+  const yesterdayDate = new Date(today);
+  yesterdayDate.setDate(today.getDate() - 1);
+  const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
+  const yesterdayPages = getPages(yesterdayStr);
+  for (let i = 6; i >= 0; i--) {
+    const d = new Date(today); d.setDate(today.getDate() - i);
+    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const label = i === 0 ? "오늘" : i === 1 ? "어제" : `${d.getMonth() + 1}/${d.getDate()}`;
+    dailyChart.push({ label, pages: getPages(ds) });
+  }
 
   // 주간 — 최근 7일 vs 직전 7일
   const weeklyChart: PeriodStat[] = [];
@@ -205,6 +218,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
     chart: PeriodStat[]; current: number; prev: number;
     currentLabel: string; prevLabel: string;
   }> = {
+    daily:   { chart: dailyChart,   current: todayPages,   prev: yesterdayPages, currentLabel: "오늘",     prevLabel: "어제" },
     weekly:  { chart: weeklyChart,  current: weekCurrent,  prev: weekPrev,  currentLabel: "이번 주",  prevLabel: "지난 주" },
     monthly: { chart: monthlyChart, current: monthCurrent, prev: monthPrev, currentLabel: "이번 달",  prevLabel: "지난 달" },
     yearly:  { chart: yearlyChart,  current: yearCurrent,  prev: yearPrev,  currentLabel: "올해",     prevLabel: "작년" },
@@ -248,17 +262,13 @@ export function StatsTab({ userId, gold, streak }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* ── 요약 카드 ── */}
-      <div className="grid grid-cols-2 gap-3">
-        <SummaryCard icon="📖" label="오늘 읽은 페이지" value={`${todayPages.toLocaleString()}p`}
-          bg="bg-[#E8F0E8] dark:bg-[#2D4A2E]/30" />
-        <SummaryCard icon="📄" label="총 읽은 페이지" value={`${totalPages.toLocaleString()}p`}
-          bg="bg-[#EEF3EE] dark:bg-[#3D5A3E]/20" />
-        <SummaryCard icon="📚" label="완독한 책" value={`${completedBooks}권`}
-          bg="bg-[#EEF4EE] dark:bg-[#2D4A2E]/20" />
+      <div className="grid grid-cols-3 gap-3">
         <SummaryCard icon="🔥" label="연속 독서" value={`${streak}일`}
           bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
         <SummaryCard icon="🪙" label="보유 골드" value={`${gold.toLocaleString()}G`}
           bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
+        <SummaryCard icon="📚" label="완독한 책" value={`${completedBooks}권`}
+          bg="bg-[#EEF4EE] dark:bg-[#2D4A2E]/20" />
       </div>
 
       {/* ── 독서량 (주간/월간/연간 탭) ── */}
@@ -267,7 +277,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-gray-800 dark:text-gray-100 text-sm">📊 독서량</h3>
           <div className="flex gap-1">
-            {(["weekly", "monthly", "yearly"] as Period[]).map((p) => (
+            {(["daily", "weekly", "monthly", "yearly"] as Period[]).map((p) => (
               <button
                 key={p}
                 onClick={() => setPeriod(p)}
@@ -277,7 +287,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
                     : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
                 }`}
               >
-                {p === "weekly" ? "주간" : p === "monthly" ? "월간" : "연간"}
+                {p === "daily" ? "오늘" : p === "weekly" ? "주간" : p === "monthly" ? "월간" : "연간"}
               </button>
             ))}
           </div>
@@ -320,6 +330,13 @@ export function StatsTab({ userId, gold, streak }: Props) {
             </BarChart>
           </ResponsiveContainer>
         )}
+
+        {/* 누적 요약 */}
+        <div className="flex items-center justify-center gap-3 mt-2 pt-2 border-t border-gray-100 dark:border-gray-800">
+          <span className="text-[11px] text-gray-400 dark:text-gray-500">
+            📄 총 <span className="font-semibold text-gray-600 dark:text-gray-300">{totalPages.toLocaleString()}p</span>
+          </span>
+        </div>
       </div>
 
       {/* ── 장르 분포 ── */}
