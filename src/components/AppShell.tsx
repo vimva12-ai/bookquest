@@ -19,6 +19,7 @@ import {
 } from "@/lib/game/titles";
 import {
   generateQuests,
+  applyQuestProgress,
   DEFAULT_USER_READING_STATS,
 } from "@/lib/game/quests";
 import type { AchievementStats } from "@/lib/game/achievements";
@@ -27,6 +28,7 @@ import type {
   CharacterData,
   EquipmentSlot,
   EquipmentTier,
+  ReadingLog,
   UserEquipment,
 } from "@/types/database";
 
@@ -44,14 +46,16 @@ function PlaceholderTab({ icon, title }: { icon: string; title: string }) {
 interface Props {
   initialCharacter: CharacterData;
   initialBooks: Book[];
+  initialLogs: ReadingLog[];
   userId: string;
 }
 
-export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
+export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }: Props) {
   const supabase = getSupabaseBrowserClient();
   const [activeTab, setActiveTab] = useState<TabId>("library");
   const [character, setCharacter] = useState(initialCharacter);
   const [books, setBooks] = useState(initialBooks);
+  const [logs, setLogs] = useState(initialLogs);
 
   // 책 목록 새로고침
   const refreshBooks = useCallback(async () => {
@@ -61,6 +65,15 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
       .eq("user_id", userId)
       .order("created_at", { ascending: false });
     if (data) setBooks(data as Book[]);
+  }, [supabase, userId]);
+
+  // 독서 기록 새로고침 (퀘스트 진행도 갱신용)
+  const refreshLogs = useCallback(async () => {
+    const { data } = await supabase
+      .from("reading_logs")
+      .select("*")
+      .eq("user_id", userId);
+    if (data) setLogs(data as ReadingLog[]);
   }, [supabase, userId]);
 
   // 스탯 재조회 (reading_logs 집계)
@@ -136,6 +149,7 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
         .eq("id", userId);
 
       await refreshStats();
+      await refreshLogs();
 
       // 칭호 체크
       const completedBooks = books.filter((b) => b.status === "complete").length;
@@ -146,7 +160,7 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
         genresRead
       );
     },
-    [character, supabase, userId, refreshStats, books, checkAndUnlockTitles]
+    [character, supabase, userId, refreshStats, refreshLogs, books, checkAndUnlockTitles]
   );
 
   // 칭호 선택
@@ -230,10 +244,15 @@ export function AppShell({ initialCharacter, initialBooks, userId }: Props) {
     [character, books]
   );
 
-  // 퀘스트 생성 (시드 기반, 날짜 고정)
+  // 퀘스트 생성 (시드 기반, 날짜 고정) + 진행도 계산
   const quests = useMemo(
-    () => generateQuests(books, DEFAULT_USER_READING_STATS),
-    [books]
+    () => applyQuestProgress(
+      generateQuests(books, DEFAULT_USER_READING_STATS),
+      logs,
+      books,
+      character.profile.streak,
+    ),
+    [books, logs, character.profile.streak]
   );
 
   return (

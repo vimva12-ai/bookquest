@@ -2,7 +2,7 @@
 import { redirect } from "next/navigation";
 import { getSupabaseServerClient } from "@/lib/supabase/server";
 import { AppShell } from "@/components/AppShell";
-import type { Book, CharacterData } from "@/types/database";
+import type { Book, CharacterData, ReadingLog } from "@/types/database";
 
 export default async function HomePage() {
   const supabase = await getSupabaseServerClient();
@@ -85,6 +85,12 @@ export default async function HomePage() {
     .eq("user_id", user.id)
     .order("created_at", { ascending: false });
 
+  // ── 독서 기록 조회 (퀘스트 진행도 계산용) ──
+  const { data: readingLogs } = await supabase
+    .from("reading_logs")
+    .select("*")
+    .eq("user_id", user.id);
+
   const characterData: CharacterData = {
     profile: profile!,
     stats: stats!,
@@ -96,6 +102,7 @@ export default async function HomePage() {
     <AppShell
       initialCharacter={characterData}
       initialBooks={(books as Book[]) || []}
+      initialLogs={(readingLogs as ReadingLog[]) || []}
       userId={user.id}
     />
   );

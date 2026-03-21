@@ -135,6 +135,10 @@ export function StatsTab({ userId, gold, streak }: Props) {
   function getPages(dateStr: string) { return pagesByDate.get(dateStr) || 0; }
 
   const today = new Date();
+
+  // 오늘 읽은 페이지
+  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayPages = getPages(todayStr);
   const todayYear  = today.getFullYear();
   const todayMonth = today.getMonth(); // 0-based
 
@@ -243,8 +247,10 @@ export function StatsTab({ userId, gold, streak }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      {/* ── 요약 카드 4개 ── */}
+      {/* ── 요약 카드 ── */}
       <div className="grid grid-cols-2 gap-3">
+        <SummaryCard icon="📖" label="오늘 읽은 페이지" value={`${todayPages.toLocaleString()}p`}
+          bg="bg-[#E8F0E8] dark:bg-[#2D4A2E]/30" />
         <SummaryCard icon="📄" label="총 읽은 페이지" value={`${totalPages.toLocaleString()}p`}
           bg="bg-[#EEF3EE] dark:bg-[#3D5A3E]/20" />
         <SummaryCard icon="📚" label="완독한 책" value={`${completedBooks}권`}

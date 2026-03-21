@@ -78,15 +78,26 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 - `handleEquipmentPurchase(slot, tier, price)` — 골드 차감 + 장비 장착을 동시에 처리.
 - `handleTitleChange(titleId)` — 칭호 선택 즉시 반영.
 
-### 픽셀아트 에셋 (`public/assets/`)
+### 캐릭터 렌더링 (`src/components/character/`)
 
-- **`characters/lpc_entry/png/walkcycle/`** — LPC Medieval Fantasy 스프라이트. 576×256px, 64×64 프레임, 9열×4행 (행 순서: 북/서/남/동). 행 2(남쪽)의 열 0이 플레이어를 향한 Idle 프레임. `PixelCharacter.tsx`가 CSS `backgroundImage` + `backgroundPosition`으로 레이어를 겹쳐 표시. 장비 등급별로 다른 레이어 파일을 추가하며, platinum 이상은 CSS `filter`로 색조 변환.
-- **`equipment/30FreeIcons/`** — 현재 미사용(참고용 보관). `EquipmentIcon.tsx`는 외부 이미지 없이 **인라인 SVG**로 슬롯별 아이콘을 그린다. `fill={TIER_COLOR[tier]}`로 등급 색상을 주입하며 미장착 시 `#C8D0C8`.
+**`PixelCharacter.tsx`** — LPC 스프라이트 + SVG 오버레이로 캐릭터를 렌더링한다.
+
+- **스프라이트 시트**: `public/assets/characters/lpc_entry/png/walkcycle/` — 576×256px, 64×64 프레임, 9열×4행 (행 순서: 북/서/남/동). 행 2(남쪽)의 열 0이 Idle 프레임. CSS `backgroundImage` + `backgroundPosition`으로 레이어를 겹친다.
+- **장비별 렌더링 방식**:
+  - 갑옷/신발/투구/방패: PNG 스프라이트 레이어 + 슬롯별 `getSlotTierFilter()` CSS 필터로 7등급 색상 표현 (iron=grayscale, bronze=sepia, silver/gold/platinum/master/challenger=hue-rotate 조합).
+  - **망토**: SVG 오버레이 (z-index 0, 스프라이트 뒤). 어깨 아래(y=32)에서 시작, 윗부분을 2px→3px→4px→5px로 둥글게 테이퍼링. 발끝(y=57)까지 연장. `TIER_COLOR[tier]`를 `fill`로 주입.
+  - **무기**: SVG 오버레이 (z-index 최상단). 롱소드 — 칼날(혈조+하이라이트), 크로스가드(중앙 보석), 가죽 그립(교차 색상), 폼멜. 오른손 위치(x≈19-21, y≈38-46)에 맞춰 배치. `TIER_COLOR[tier]`로 금속 부분 채색.
+- **SVG 수정 시 주의**: `shapeRendering="crispEdges"` 필수 (픽셀아트 선명도). 좌표는 64×64 viewBox 기준이며, `size` prop으로 스케일링.
+
+**`EquipmentIcon.tsx`** — 외부 이미지 없이 **인라인 SVG**로 슬롯별 아이콘을 그린다. `fill={TIER_COLOR[tier]}`로 등급 색상을 주입하며 미장착 시 `#C8D0C8`.
+
 - License: LPC 에셋은 CC-BY-SA 3.0. 에셋 수정 시 크레딧(`CreditsModal.tsx`) 업데이트 필요.
 
 ### 탭 컴포넌트 구조 (`src/components/tabs/`)
 
-- **`LibraryTab.tsx`** — 책 추가/삭제, 페이지 기록. 기록 시 `handleStatChange` 콜백 호출.
+- **`LibraryTab.tsx`** — 책 추가/삭제, 페이지 기록. 기록 시 `handleStatChange` 콜백 호출. 책 목록에서 달성률을 `41 / 381p (11%)` 형태로 표시.
+  - **이미 읽은 페이지**: 책 추가 시 `prior_pages` 필드로 기존 진행도 입력 가능. `books.read_pages`를 초기화하지만 `reading_logs`는 생성하지 않으므로 EXP/골드/스탯에 반영되지 않는다. 이후 `RecordPageModal`로 기록한 페이지만 보상 대상.
+  - **카카오 검색 연동**: 검색 → 선택 시 제목/저자/출판사/표지/ISBN 자동 입력 + `/api/books/page-info`에서 커뮤니티 페이지 수를 가져와 `total_pages` 자동 설정.
 - **`CharacterTab.tsx`** — 레벨/EXP/스탯/장비/칭호 표시. `PixelCharacter` + `EquipmentIcon` 사용.
 - **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
 - **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. `reading_logs`를 날짜 Map으로 변환 후 집계.

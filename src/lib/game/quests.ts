@@ -1,6 +1,6 @@
 // 이 파일이 하는 일: 날짜 시드 기반 퀘스트 자동 생성 (PRD 4-6 기반)
 
-import type { Book } from "@/types/database";
+import type { Book, ReadingLog } from "@/types/database";
 
 export interface Quest {
   id: string;
@@ -158,3 +158,205 @@ export const DEFAULT_USER_READING_STATS: UserReadingStats = {
   avgMonthlyBooks: 1,
   streak: 0,
 };
+
+// ── 퀘스트 진행도 계산 ────────────────────────────────────
+
+interface QuestContext {
+  todayPages: number;
+  todayLogCount: number;
+  todayGenres: Set<string>;
+  weekPages: number;
+  weekReadDays: number;
+  weekGenres: number;
+  weekCompleted: number;
+  monthPages: number;
+  monthReadDays: number;
+  monthGenres: number;
+  monthCompleted: number;
+  streak: number;
+  bookPagesByTitle: Map<string, number>; // 오늘 책별 읽은 페이지
+  weekBookPagesByTitle: Map<string, number>; // 이번 주 책별 읽은 페이지
+}
+
+function buildQuestContext(
+  logs: ReadingLog[],
+  books: Book[],
+  streak: number,
+): QuestContext {
+  const now = new Date();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+  const monthPrefix = todayStr.slice(0, 7); // "YYYY-MM"
+
+  // 이번 주 시작일 (월요일)
+  const dayOfWeek = now.getDay(); // 0=일 ~ 6=토
+  const mondayOffset = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const monday = new Date(now);
+  monday.setDate(now.getDate() - mondayOffset);
+  const weekStartStr = `${monday.getFullYear()}-${String(monday.getMonth() + 1).padStart(2, "0")}-${String(monday.getDate()).padStart(2, "0")}`;
+
+  let todayPages = 0;
+  let todayLogCount = 0;
+  const todayGenres = new Set<string>();
+  let weekPages = 0;
+  const weekDays = new Set<string>();
+  const weekGenresSet = new Set<string>();
+  let monthPages = 0;
+  const monthDays = new Set<string>();
+  const monthGenresSet = new Set<string>();
+  const bookPagesByTitle = new Map<string, number>();
+  const weekBookPagesByTitle = new Map<string, number>();
+
+  // book_id → title 매핑
+  const bookIdToTitle = new Map<string, string>();
+  for (const b of books) bookIdToTitle.set(b.id, b.title);
+
+  for (const log of logs) {
+    const bookTitle = log.book_id ? bookIdToTitle.get(log.book_id) || "" : "";
+
+    // 오늘
+    if (log.date === todayStr) {
+      todayPages += log.pages_read;
+      todayLogCount++;
+      if (log.genre) todayGenres.add(log.genre);
+      bookPagesByTitle.set(bookTitle, (bookPagesByTitle.get(bookTitle) || 0) + log.pages_read);
+    }
+
+    // 이번 주 (월~일)
+    if (log.date >= weekStartStr && log.date <= todayStr) {
+      weekPages += log.pages_read;
+      weekDays.add(log.date);
+      if (log.genre) weekGenresSet.add(log.genre);
+      weekBookPagesByTitle.set(bookTitle, (weekBookPagesByTitle.get(bookTitle) || 0) + log.pages_read);
+    }
+
+    // 이번 달
+    if (log.date.startsWith(monthPrefix)) {
+      monthPages += log.pages_read;
+      monthDays.add(log.date);
+      if (log.genre) monthGenresSet.add(log.genre);
+    }
+  }
+
+  // 이번 주/달 완독 수
+  const weekCompleted = books.filter(
+    (b) => b.status === "complete" && b.completed_at && b.completed_at.slice(0, 10) >= weekStartStr && b.completed_at.slice(0, 10) <= todayStr
+  ).length;
+
+  const monthCompleted = books.filter(
+    (b) => b.status === "complete" && b.completed_at && b.completed_at.slice(0, 7) === monthPrefix
+  ).length;
+
+  return {
+    todayPages,
+    todayLogCount,
+    todayGenres,
+    weekPages,
+    weekReadDays: weekDays.size,
+    weekGenres: weekGenresSet.size,
+    weekCompleted,
+    monthPages,
+    monthReadDays: monthDays.size,
+    monthGenres: monthGenresSet.size,
+    monthCompleted,
+    streak,
+    bookPagesByTitle,
+    weekBookPagesByTitle,
+  };
+}
+
+// 퀘스트 제목에서 책 제목 추출 ("책제목" ... → 책제목)
+function extractBookTitle(questTitle: string): string | null {
+  const match = questTitle.match(/^"(.+?)"/);
+  return match ? match[1] : null;
+}
+
+function computeSingleProgress(quest: Quest, ctx: QuestContext): number {
+  switch (quest.type) {
+    // ── 일일 ──
+    case "pages_today":
+    case "pages_challenge":
+      return ctx.todayPages;
+    case "specific_book": {
+      const title = extractBookTitle(quest.title);
+      return title ? (ctx.bookPagesByTitle.get(title) || 0) : 0;
+    }
+    case "record_today":
+      return ctx.todayLogCount > 0 ? 1 : 0;
+    case "memo":
+      return 0; // Phase 3
+    case "login":
+      return 1;
+    case "genre_read":
+      return ctx.todayGenres.size > 0 ? 1 : 0;
+
+    // ── 주간 ──
+    case "weekly_pages":
+      return ctx.weekPages;
+    case "weekly_complete":
+      return ctx.weekCompleted;
+    case "weekly_streak":
+      return Math.min(ctx.streak, quest.total);
+    case "weekly_days":
+      return ctx.weekReadDays;
+    case "weekly_genre_variety":
+      return ctx.weekGenres;
+    case "weekly_memo":
+      return 0; // Phase 3
+    case "weekly_specific": {
+      const title = extractBookTitle(quest.title);
+      return title ? (ctx.weekBookPagesByTitle.get(title) || 0) : 0;
+    }
+
+    // ── 월간 ──
+    case "monthly_pages":
+      return ctx.monthPages;
+    case "monthly_books":
+      return ctx.monthCompleted;
+    case "monthly_days":
+      return ctx.monthReadDays;
+    case "monthly_streak":
+      return Math.min(ctx.streak, quest.total);
+    case "monthly_genre":
+      return ctx.monthGenres;
+    case "monthly_new_genre":
+      return ctx.monthGenres > 0 ? 1 : 0;
+    case "monthly_specific_complete": {
+      const title = extractBookTitle(quest.title);
+      if (!title) return 0;
+      // 해당 책이 완독 상태인지 확인 (books array 접근 불가하므로 ctx에서 처리)
+      return 0; // 완독 여부는 아래 applyProgress에서 books로 처리
+    }
+
+    default:
+      return 0;
+  }
+}
+
+export function applyQuestProgress(
+  quests: QuestSet,
+  logs: ReadingLog[],
+  books: Book[],
+  streak: number,
+): QuestSet {
+  const ctx = buildQuestContext(logs, books, streak);
+
+  function applyToList(list: Quest[]): Quest[] {
+    return list.map((q) => {
+      let progress: number;
+      if (q.type === "monthly_specific_complete") {
+        const title = extractBookTitle(q.title);
+        progress = title && books.some((b) => b.title === title && b.status === "complete") ? 1 : 0;
+      } else {
+        progress = computeSingleProgress(q, ctx);
+      }
+      progress = Math.min(progress, q.total);
+      return { ...q, progress, completed: progress >= q.total };
+    });
+  }
+
+  return {
+    daily: applyToList(quests.daily),
+    weekly: applyToList(quests.weekly),
+    monthly: applyToList(quests.monthly),
+  };
+}
