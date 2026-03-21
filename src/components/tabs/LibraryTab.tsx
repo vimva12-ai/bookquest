@@ -353,8 +353,22 @@ function extractIsbn13(isbnStr: string): string {
 }
 
 // ─── 책 추가 폼 (카카오 검색 + 직접 입력) ────────────────
-function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }) {
+function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
+  onAdd: (book: BookFormData) => Promise<void>;
+  externalOpen?: boolean;
+  onExternalOpened?: () => void;
+}) {
   const [open, setOpen] = useState(false);
+  const formRef = useRef<HTMLDivElement>(null);
+
+  // 외부에서 열기 요청
+  useEffect(() => {
+    if (externalOpen) {
+      setOpen(true);
+      onExternalOpened?.();
+      setTimeout(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" }), 100);
+    }
+  }, [externalOpen, onExternalOpened]);
 
   // 검색 상태
   const [query, setQuery] = useState("");
@@ -489,6 +503,7 @@ function AddBookForm({ onAdd }: { onAdd: (book: BookFormData) => Promise<void> }
 
   return (
     <form
+      ref={formRef as React.Ref<HTMLFormElement>}
       onSubmit={handleSubmit}
       className="bg-white dark:bg-[#242B24] rounded-2xl p-4 shadow-sm border border-[#D4E4D4] dark:border-[#3D5A3E]/30"
     >
@@ -741,6 +756,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
   const [toast, setToast] = useState("");
+  const [addBookOpen, setAddBookOpen] = useState(false);
 
   // 토스트 자동 제거
   useEffect(() => {
@@ -855,7 +871,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
 
   return (
     <div className="flex flex-col gap-4">
-      {/* 필터 탭 */}
+      {/* 필터 탭 + 추가 버튼 */}
       <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
         {(["all", "reading", "complete", "wishlist"] as FilterType[]).map((f) => (
           <button
@@ -875,6 +891,12 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
             </span>
           </button>
         ))}
+        <button
+          onClick={() => setAddBookOpen(true)}
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[#C4933F]/15 text-[#A07A2E] dark:bg-[#C4933F]/20 dark:text-[#D4A94F] hover:bg-[#C4933F]/25 dark:hover:bg-[#C4933F]/30"
+        >
+          + 추가
+        </button>
       </div>
 
       {/* 책 목록 */}
@@ -892,7 +914,11 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange }: Props
       </div>
 
       {/* 책 추가 폼 */}
-      <AddBookForm onAdd={handleAddBook} />
+      <AddBookForm
+        onAdd={handleAddBook}
+        externalOpen={addBookOpen}
+        onExternalOpened={() => setAddBookOpen(false)}
+      />
 
       {/* 페이지 기록 모달 */}
       {recordingBook && (
