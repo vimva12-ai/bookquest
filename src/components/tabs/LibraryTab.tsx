@@ -140,11 +140,13 @@ function BookCard({
   onRecordPage,
   onDeleteBook,
   onMemo,
+  onSetTargetDate,
 }: {
   book: Book;
   onRecordPage: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
   onMemo: (book: Book) => void;
+  onSetTargetDate: (book: Book) => void;
 }) {
   const info = GENRE_INFO[book.genre];
   const progress = book.total_pages > 0 ? (book.read_pages / book.total_pages) * 100 : 0;
@@ -244,6 +246,18 @@ function BookCard({
             </span>
           )}
           <div className="flex items-center gap-2">
+            {!isComplete && (
+              <button
+                onClick={() => onSetTargetDate(book)}
+                className={`text-[10px] transition-colors ${
+                  book.target_date
+                    ? "text-[#5B8C5A] dark:text-[#6BA368] hover:text-[#3D5A3E]"
+                    : "text-[#A3AEA3] dark:text-[#556655] hover:text-[#5B8C5A] dark:hover:text-[#6BA368]"
+                }`}
+              >
+                {book.target_date ? "목표일 ✓" : "목표일"}
+              </button>
+            )}
             <button
               onClick={() => onMemo(book)}
               className="text-[10px] text-[#4A7A8A] dark:text-[#6BA3A3] hover:text-[#3A6A7A] transition-colors"
@@ -257,6 +271,112 @@ function BookCard({
               삭제
             </button>
           </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ─── 목표일 설정 모달 ───────────────────────────────────
+function TargetDateModal({
+  book,
+  onClose,
+  onSave,
+}: {
+  book: Book;
+  onClose: () => void;
+  onSave: (targetDate: string | null) => Promise<void>;
+}) {
+  const [targetDate, setTargetDate] = useState(book.target_date ?? "");
+  const [saving, setSaving] = useState(false);
+
+  const todayMs = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const targetMs = targetDate ? (() => { const d = new Date(targetDate); d.setHours(0, 0, 0, 0); return d.getTime(); })() : null;
+  const daysLeft = targetMs !== null ? Math.ceil((targetMs - todayMs) / (1000 * 60 * 60 * 24)) : null;
+  const remaining = book.total_pages - book.read_pages;
+  const pagesPerDay = (daysLeft !== null && daysLeft > 0 && remaining > 0)
+    ? Math.ceil(remaining / daysLeft)
+    : null;
+
+  async function handleSave() {
+    setSaving(true);
+    await onSave(targetDate || null);
+    setSaving(false);
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/30 dark:bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white dark:bg-[#242B24] rounded-2xl p-6 shadow-xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-1">완독 목표일</h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5 truncate">📖 {book.title}</p>
+
+        <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+          남은 페이지{" "}
+          <span className="font-bold text-[#3D5A3E] dark:text-[#6BA368]">
+            {Math.max(0, remaining)}p
+          </span>
+          {" "}· 전체 {book.total_pages}p
+        </p>
+
+        <label className="block mb-2">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
+            목표 완독일
+          </span>
+          <input
+            type="date"
+            value={targetDate}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+          />
+        </label>
+
+        {targetDate && daysLeft !== null && (
+          <p className={`text-sm mb-5 font-medium ${
+            daysLeft <= 0
+              ? "text-red-500 dark:text-red-400"
+              : daysLeft <= 3
+              ? "text-amber-500 dark:text-amber-400"
+              : "text-[#5B8C5A] dark:text-[#6BA368]"
+          }`}>
+            {daysLeft <= 0
+              ? "⚠️ 이미 지난 날짜예요"
+              : pagesPerDay !== null
+              ? `🎯 ${daysLeft}일 남음 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
+              : `🎯 ${daysLeft}일 남음`}
+          </p>
+        )}
+        {!targetDate && <div className="mb-5" />}
+
+        <div className="flex gap-2">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            취소
+          </button>
+          {book.target_date && (
+            <button
+              onClick={async () => { setSaving(true); await onSave(null); setSaving(false); }}
+              disabled={saving}
+              className="px-4 py-2.5 border border-red-200 dark:border-red-800 text-red-500 dark:text-red-400 rounded-xl text-sm hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors disabled:opacity-40"
+            >
+              삭제
+            </button>
+          )}
+          <button
+            onClick={handleSave}
+            disabled={saving || !targetDate}
+            className="flex-1 py-2.5 bg-[#3D5A3E] hover:bg-[#2D4A2E] disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
         </div>
       </div>
     </div>
@@ -866,6 +986,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
   const [filter, setFilter] = useState<FilterType>("all");
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+  const [targetDateBook, setTargetDateBook] = useState<Book | null>(null);
   const [toast, setToast] = useState("");
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [memoBook, setMemoBook] = useState<Book | null>(null);
@@ -921,6 +1042,14 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
       }
     }
 
+    onBooksChange();
+  }
+
+  // 목표일 설정
+  async function handleSaveTargetDate(targetDate: string | null) {
+    if (!targetDateBook) return;
+    await supabase.from("books").update({ target_date: targetDate }).eq("id", targetDateBook.id);
+    setTargetDateBook(null);
     onBooksChange();
   }
 
@@ -1024,7 +1153,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
           </div>
         ) : (
           filtered.map((book) => (
-            <BookCard key={book.id} book={book} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} />
+            <BookCard key={book.id} book={book} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} onSetTargetDate={setTargetDateBook} />
           ))
         )}
       </div>
@@ -1042,6 +1171,15 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
           book={recordingBook}
           onClose={() => setRecordingBook(null)}
           onSave={handleRecordPage}
+        />
+      )}
+
+      {/* 목표일 설정 모달 */}
+      {targetDateBook && (
+        <TargetDateModal
+          book={targetDateBook}
+          onClose={() => setTargetDateBook(null)}
+          onSave={handleSaveTargetDate}
         />
       )}
 
