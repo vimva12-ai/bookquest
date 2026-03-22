@@ -35,6 +35,7 @@ interface BookFormData {
   publisher: string | null;
   cover_url: string | null;
   description: string | null;
+  target_date: string | null;
 }
 
 // ─── 장르 선택 버튼 ─────────────────────────────────────
@@ -120,6 +121,19 @@ function DeleteConfirmModal({
   );
 }
 
+// ─── 목표 날짜 → 하루 목표 페이지 계산 ──────────────────
+function calcDailyTarget(book: Book): { pagesPerDay: number; daysLeft: number } | null {
+  if (!book.target_date || book.status === "complete") return null;
+  const remaining = book.total_pages - book.read_pages;
+  if (remaining <= 0) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const target = new Date(book.target_date);
+  target.setHours(0, 0, 0, 0);
+  const daysLeft = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return { pagesPerDay: daysLeft > 0 ? Math.ceil(remaining / daysLeft) : -1, daysLeft };
+}
+
 // ─── 책 카드 ────────────────────────────────────────────
 function BookCard({
   book,
@@ -135,6 +149,7 @@ function BookCard({
   const info = GENRE_INFO[book.genre];
   const progress = book.total_pages > 0 ? (book.read_pages / book.total_pages) * 100 : 0;
   const isComplete = book.status === "complete";
+  const dailyTarget = calcDailyTarget(book);
 
   return (
     <div
@@ -196,6 +211,21 @@ function BookCard({
               {book.read_pages} / {book.total_pages}p ({Math.round(progress)}%)
             </span>
           </div>
+
+          {/* 하루 목표 페이지 */}
+          {dailyTarget && (
+            <p className={`text-[10px] mt-1 font-medium ${
+              dailyTarget.daysLeft <= 0
+                ? "text-red-500 dark:text-red-400"
+                : dailyTarget.daysLeft <= 3
+                ? "text-amber-500 dark:text-amber-400"
+                : "text-[#5B8C5A] dark:text-[#6BA368]"
+            }`}>
+              {dailyTarget.daysLeft <= 0
+                ? `⚠️ 목표일 초과 — 하루 ${dailyTarget.pagesPerDay < 0 ? "??" : dailyTarget.pagesPerDay}p`
+                : `🎯 ${dailyTarget.daysLeft}일 남음 · 하루 ${dailyTarget.pagesPerDay}p`}
+            </p>
+          )}
         </div>
 
         {/* 오른쪽 액션 영역 */}
@@ -241,9 +271,10 @@ function RecordPageModal({
 }: {
   book: Book;
   onClose: () => void;
-  onSave: (toPage: number) => Promise<void>;
+  onSave: (toPage: number, targetDate: string | null) => Promise<void>;
 }) {
   const [toPage, setToPage] = useState(0);
+  const [targetDate, setTargetDate] = useState(book.target_date ?? "");
   const [saving, setSaving] = useState(false);
 
   const newPages = Math.max(0, toPage - book.read_pages);
@@ -251,10 +282,19 @@ function RecordPageModal({
   const expGain = newPages * EXP_PER_PAGE + (willComplete ? EXP_BONUS_COMPLETE : 0);
   const goldGain = newPages * GOLD_PER_PAGE + (willComplete ? GOLD_BONUS_COMPLETE : 0);
 
+  // 목표 날짜 기준 하루 페이지 계산 (현재 입력값 기준)
+  const remainingAfter = Math.max(0, book.total_pages - Math.min(toPage || book.read_pages, book.total_pages));
+  const todayMs = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
+  const targetMs = targetDate ? (() => { const d = new Date(targetDate); d.setHours(0, 0, 0, 0); return d.getTime(); })() : null;
+  const daysLeft = targetMs !== null ? Math.ceil((targetMs - todayMs) / (1000 * 60 * 60 * 24)) : null;
+  const pagesPerDay = (daysLeft !== null && daysLeft > 0 && remainingAfter > 0)
+    ? Math.ceil(remainingAfter / daysLeft)
+    : null;
+
   async function handleSave() {
     if (newPages <= 0) return;
     setSaving(true);
-    await onSave(Math.min(toPage, book.total_pages));
+    await onSave(Math.min(toPage, book.total_pages), targetDate || null);
     setSaving(false);
   }
 
@@ -295,6 +335,35 @@ function RecordPageModal({
             />
             <span className="text-sm text-gray-400">페이지</span>
           </div>
+        </label>
+
+        {/* 완독 목표 날짜 */}
+        <label className="block mb-4">
+          <span className="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-1.5">
+            완독 목표일 <span className="text-xs font-normal text-gray-400">(선택)</span>
+          </span>
+          <input
+            type="date"
+            value={targetDate}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+          />
+          {targetDate && daysLeft !== null && (
+            <p className={`text-xs mt-1.5 pl-1 font-medium ${
+              daysLeft <= 0
+                ? "text-red-500 dark:text-red-400"
+                : daysLeft <= 3
+                ? "text-amber-500 dark:text-amber-400"
+                : "text-[#5B8C5A] dark:text-[#6BA368]"
+            }`}>
+              {daysLeft <= 0
+                ? "⚠️ 이미 지난 날짜예요"
+                : pagesPerDay !== null
+                ? `🎯 ${daysLeft}일 남음 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
+                : `🎯 ${daysLeft}일 남음`}
+            </p>
+          )}
         </label>
 
         {/* 미리보기 */}
@@ -400,6 +469,7 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
   const [publisher, setPublisher] = useState("");
   const [coverUrl, setCoverUrl] = useState("");
   const [description, setDescription] = useState("");
+  const [targetDate, setTargetDate] = useState("");
 
   // 커뮤니티 정보
   const [communityInfo, setCommunityInfo] = useState<CommunityBookInfo | null>(null);
@@ -488,6 +558,7 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
       publisher: publisher || null,
       cover_url: coverUrl || null,
       description: description || null,
+      target_date: targetDate || null,
     });
     resetForm();
     setSaving(false);
@@ -495,7 +566,7 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
 
   function resetForm() {
     setTitle(""); setAuthor(""); setTotalPages(300); setPriorPages(0); setGenre("wisdom");
-    setIsbn(""); setPublisher(""); setCoverUrl(""); setDescription("");
+    setIsbn(""); setPublisher(""); setCoverUrl(""); setDescription(""); setTargetDate("");
     setCommunityInfo(null); setQuery(""); setResults([]);
     setShowDropdown(false); setSearchFailed(false);
     setOpen(false);
@@ -731,6 +802,32 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
             ))}
           </div>
         </div>
+
+        {/* 완독 목표일 */}
+        <div>
+          <p className="text-xs text-gray-500 dark:text-gray-400 mb-2">완독 목표일 <span className="opacity-60">(선택)</span></p>
+          <input
+            type="date"
+            value={targetDate}
+            min={new Date().toISOString().slice(0, 10)}
+            onChange={(e) => setTargetDate(e.target.value)}
+            className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+          />
+          {targetDate && totalPages > 0 && (() => {
+            const today = new Date(); today.setHours(0, 0, 0, 0);
+            const target = new Date(targetDate); target.setHours(0, 0, 0, 0);
+            const days = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+            const remaining = Math.max(1, totalPages) - Math.min(priorPages, Math.max(1, totalPages) - 1);
+            const ppd = days > 0 ? Math.ceil(remaining / days) : null;
+            return days > 0 && ppd ? (
+              <p className="text-xs text-[#5B8C5A] dark:text-[#6BA368] mt-1.5 pl-1 font-medium">
+                🎯 {days}일 안에 완독 · 하루 {ppd}p씩!
+              </p>
+            ) : days <= 0 ? (
+              <p className="text-xs text-red-500 dark:text-red-400 mt-1.5 pl-1">⚠️ 이미 지난 날짜예요</p>
+            ) : null;
+          })()}
+        </div>
       </div>
 
       <div className="flex gap-2 mt-4">
@@ -803,6 +900,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
       publisher: data.publisher,
       cover_url: data.cover_url,
       description: data.description,
+      target_date: data.target_date,
     });
 
     // 커뮤니티 페이지 DB에 기여 (ISBN이 있을 때만)
@@ -835,7 +933,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
   }
 
   // 페이지 기록
-  async function handleRecordPage(toPage: number) {
+  async function handleRecordPage(toPage: number, targetDate: string | null) {
     if (!recordingBook) return;
     const newPages = toPage - recordingBook.read_pages;
     const willComplete = toPage >= recordingBook.total_pages;
@@ -858,6 +956,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
       read_pages: toPage,
       status: willComplete ? "complete" : "reading",
       completed_at: willComplete ? new Date().toISOString() : null,
+      target_date: willComplete ? null : (targetDate ?? recordingBook.target_date ?? null),
     }).eq("id", recordingBook.id);
 
     // 3. 스트릭 업데이트 — 오늘 처음 기록이면 +1, 이미 기록했으면 0

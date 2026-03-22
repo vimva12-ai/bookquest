@@ -57,6 +57,8 @@ export interface Book {
   publisher?: string | null;
   cover_url?: string | null;
   description?: string | null;
+  // 완독 목표 날짜
+  target_date?: string | null;
 }
 
 // 커뮤니티 페이지 정보 (ISBN 기준 공유)
