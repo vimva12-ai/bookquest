@@ -9,6 +9,7 @@ import {
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { GENRE_INFO } from "@/lib/game/stats";
 import type { Book, ReadingLog } from "@/types/database";
+import { toLocalDateStr } from "@/lib/date";
 
 // ─── 타입 ────────────────────────────────────────────────
 interface GenreData  { name: string; value: number; color: string }
@@ -40,7 +41,7 @@ function StreakCalendar({ pagesByDate }: { pagesByDate: Map<string, number> }) {
   for (let i = 104; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
-    const dateStr = d.toISOString().slice(0, 10);
+    const dateStr = toLocalDateStr(d);
     days.push({ date: dateStr, pages: pagesByDate.get(dateStr) ?? 0 });
   }
 
@@ -150,7 +151,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const today = new Date();
 
   // 오늘 읽은 페이지
-  const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+  const todayStr = toLocalDateStr(today);
   const todayPages = getPages(todayStr);
   const todayYear  = today.getFullYear();
   const todayMonth = today.getMonth(); // 0-based
@@ -161,11 +162,11 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const dailyChart: PeriodStat[] = [];
   const yesterdayDate = new Date(today);
   yesterdayDate.setDate(today.getDate() - 1);
-  const yesterdayStr = `${yesterdayDate.getFullYear()}-${String(yesterdayDate.getMonth() + 1).padStart(2, "0")}-${String(yesterdayDate.getDate()).padStart(2, "0")}`;
+  const yesterdayStr = toLocalDateStr(yesterdayDate);
   const yesterdayPages = getPages(yesterdayStr);
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    const ds = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const ds = toLocalDateStr(d);
     const label = i === 0 ? "오늘" : i === 1 ? "어제" : `${d.getMonth() + 1}/${d.getDate()}`;
     dailyChart.push({ label, pages: getPages(ds) });
   }
@@ -176,14 +177,14 @@ export function StatsTab({ userId, gold, streak }: Props) {
   let weekCurrent = 0, weekPrev = 0;
   for (let i = 6; i >= 0; i--) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    const ds = d.toISOString().slice(0, 10);
+    const ds = toLocalDateStr(d);
     const p = getPages(ds);
     weekCurrent += p;
     weeklyChart.push({ label: DAY_LABELS[d.getDay()], pages: p });
   }
   for (let i = 13; i >= 7; i--) {
     const d = new Date(today); d.setDate(today.getDate() - i);
-    weekPrev += getPages(d.toISOString().slice(0, 10));
+    weekPrev += getPages(toLocalDateStr(d));
   }
 
   // 월간 — 이번 달 주차별 vs 지난 달

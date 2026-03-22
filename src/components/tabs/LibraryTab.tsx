@@ -4,6 +4,7 @@
 import { useState, useRef, useEffect } from "react";
 import type { Book, Genre, CommunityBookInfo } from "@/types/database";
 import { GENRE_INFO } from "@/lib/game/stats";
+import { toLocalDateStr } from "@/lib/date";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import {
   EXP_PER_PAGE,
@@ -1074,7 +1075,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
       user_id: userId,
       book_id: recordingBook.id,
       genre: recordingBook.genre,
-      date: new Date().toISOString().slice(0, 10),
+      date: toLocalDateStr(),
       pages_read: newPages,
       from_page: recordingBook.read_pages + 1,
       to_page: toPage,
@@ -1089,7 +1090,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
     }).eq("id", recordingBook.id);
 
     // 3. 스트릭 업데이트 — 오늘 처음 기록이면 +1, 이미 기록했으면 0
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = toLocalDateStr();
     const { data: todayLogs } = await supabase
       .from("reading_logs")
       .select("id")

@@ -12,6 +12,7 @@ import { QuestPanel } from "@/components/tabs/QuestPanel";
 import { StatsTab } from "@/components/tabs/StatsTab";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
 import { getLevelFromExp } from "@/lib/game/exp";
+import { toLocalDateStr } from "@/lib/date";
 import { PAGES_PER_STAT } from "@/lib/game/stats";
 import {
   buildTitleContext,
@@ -152,7 +153,7 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
       const newGold   = character.profile.gold   + goldDelta;
       const newLevel  = getLevelFromExp(newExp);
       const newStreak = character.profile.streak + streakDelta;
-      const today     = new Date().toISOString().slice(0, 10);
+      const today     = toLocalDateStr();
 
       const updatedProfile = { ...character.profile, exp: newExp, gold: newGold, level: newLevel, streak: newStreak };
       setCharacter((prev) => ({ ...prev, profile: updatedProfile }));
