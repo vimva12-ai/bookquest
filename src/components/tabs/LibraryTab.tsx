@@ -243,7 +243,7 @@ function RecordPageModal({
   onClose: () => void;
   onSave: (toPage: number) => Promise<void>;
 }) {
-  const [toPage, setToPage] = useState(book.read_pages + 1);
+  const [toPage, setToPage] = useState(0);
   const [saving, setSaving] = useState(false);
 
   const newPages = Math.max(0, toPage - book.read_pages);
