@@ -15,6 +15,10 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 
 배포는 `git push origin master` → GitHub → Cloudflare Pages 자동 빌드 방식을 사용한다. Windows에서 `npm run deploy` (로컬 직접 배포)는 OpenNext 호환성 이슈로 불안정하다.
 
+## 프리뷰 정책
+
+**preview_start는 stop hook 때문에 항상 실행**하되, 스크린샷이나 UI 검증 결과를 사용자에게 보여줄 필요 없다. 이 앱은 Google OAuth 로그인이 필요해 프리뷰에서 실제 화면을 볼 수 없다. **빌드/타입체크 통과 여부만 확인하고 종료**한다.
+
 ## Architecture Overview
 
 **Book Quest**는 RPG 요소를 결합한 독서 기록 앱이다. Next.js 15 App Router + Supabase(PostgreSQL + Auth) + Tailwind CSS v4로 구성된다.
@@ -111,6 +115,20 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 - **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
 - **`AchievementsTab.tsx`** — 28개 업적 카드 목록. `isAchieved(def, stats)`로 달성 여부 계산. `AchievementStats`를 prop으로 받으며 DB 조회 없음.
 - **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. 스트릭 캘린더는 페이지 수에 따라 3단계 색상 (1–50p 연한 초록, 51–100p 기본 초록, 101p+ 진한 초록).
+
+### 날짜 처리 규칙 (Critical)
+
+**절대로 `new Date().toISOString().slice(0, 10)` 으로 날짜 문자열을 만들지 말 것.** UTC 날짜를 반환하므로 KST 자정~오전 9시 사이에 어제 날짜가 저장된다.
+
+**항상 `toLocalDateStr()` 유틸리티를 사용한다:**
+```typescript
+import { toLocalDateStr } from "@/lib/date";
+const today = toLocalDateStr(); // 로컬 시간대 기준 YYYY-MM-DD
+```
+
+`src/lib/date.ts`에 정의됨. `reading_logs.date`, `users.last_read_date`, 퀘스트/통계 날짜 비교 모두 이 함수로 통일.
+
+**배경:** `reading_logs.date`(UTC)와 퀘스트 `buildQuestContext`(로컬)가 불일치해 페이지 기록이 오늘 퀘스트에 반영되지 않던 버그가 있었다. `StatsTab.tsx` 내에서도 일부 차트는 로컬, 일부는 UTC를 쓰는 불일치가 있었음 — 2025-03-23 수정 완료.
 
 ### 컬러 시스템
 
