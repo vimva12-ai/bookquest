@@ -887,30 +887,30 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
   return (
     <div className="flex flex-col gap-4">
       {/* 필터 탭 + 추가 버튼 */}
-      <div className="flex items-center gap-2 pb-1">
-        <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
-          {(["all", "reading", "complete", "wishlist"] as FilterType[]).map((f) => (
-            <button
-              key={f}
-              onClick={() => setFilter(f)}
-              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
-                filter === f
-                  ? "bg-[#3D5A3E] text-white"
-                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-              }`}
-            >
+      <div className="flex items-center gap-1.5 pb-1">
+        {(["all", "reading", "complete", "wishlist"] as FilterType[]).map((f) => (
+          <button
+            key={f}
+            onClick={() => setFilter(f)}
+            className={`flex-1 min-w-0 py-1.5 rounded-full text-xs font-medium transition-colors ${
+              filter === f
+                ? "bg-[#3D5A3E] text-white"
+                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 hover:bg-gray-200 dark:hover:bg-gray-700"
+            }`}
+          >
+            <span className="truncate block text-center leading-tight">
               {FILTER_LABELS[f]}
-              <span className="ml-1 opacity-60">
+              <span className="ml-0.5 opacity-60">
                 {f === "all"
                   ? books.length
                   : books.filter((b) => b.status === f).length}
+              </span>
             </span>
-            </button>
-          ))}
-        </div>
+          </button>
+        ))}
         <button
           onClick={() => setAddBookOpen(true)}
-          className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[#C4933F]/15 text-[#A07A2E] dark:bg-[#C4933F]/20 dark:text-[#D4A94F] hover:bg-[#C4933F]/25 dark:hover:bg-[#C4933F]/30"
+          className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[#C4933F]/15 text-[#A07A2E] dark:bg-[#C4933F]/20 dark:text-[#D4A94F] border border-[#C4933F]/40 dark:border-[#C4933F]/40 hover:bg-[#C4933F]/25 dark:hover:bg-[#C4933F]/30"
         >
           + 추가
         </button>
