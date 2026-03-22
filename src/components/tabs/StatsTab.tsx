@@ -26,15 +26,22 @@ function SummaryCard({ icon, label, value, bg }: { icon: string; label: string; 
 }
 
 // ─── 스트릭 캘린더 (GitHub 잔디 스타일) ─────────────────
-function StreakCalendar({ readDates }: { readDates: Set<string> }) {
+function getStreakColor(pages: number): string {
+  if (pages === 0) return "var(--streak-empty)";
+  if (pages <= 50) return "#8DC18C";   // 1~50p: 연한 초록
+  if (pages <= 100) return "#5B8C5A"; // 51~100p: 기본 색
+  return "#2D4A2E";                    // 101p+: 진한 초록
+}
+
+function StreakCalendar({ pagesByDate }: { pagesByDate: Map<string, number> }) {
   // 오늘 기준 최근 105일 (15주 × 7일)
   const today = new Date();
-  const days: Array<{ date: string; hasRead: boolean }> = [];
+  const days: Array<{ date: string; pages: number }> = [];
   for (let i = 104; i >= 0; i--) {
     const d = new Date(today);
     d.setDate(today.getDate() - i);
     const dateStr = d.toISOString().slice(0, 10);
-    days.push({ date: dateStr, hasRead: readDates.has(dateStr) });
+    days.push({ date: dateStr, pages: pagesByDate.get(dateStr) ?? 0 });
   }
 
   // 7행(요일) × 15열(주) 그리드
@@ -63,19 +70,25 @@ function StreakCalendar({ readDates }: { readDates: Set<string> }) {
             {week.map((day) => (
               <div
                 key={day.date}
-                title={day.date}
+                title={day.pages > 0 ? `${day.date} (${day.pages}p)` : day.date}
                 className="w-3 h-3 rounded-sm transition-colors"
-                style={{
-                  backgroundColor: day.hasRead
-                    ? "#5B8C5A"
-                    : "var(--streak-empty)",
-                }}
+                style={{ backgroundColor: getStreakColor(day.pages) }}
               />
             ))}
           </div>
         ))}
       </div>
-      <p className="text-xs text-gray-400 dark:text-gray-600 mt-2">최근 15주 독서 기록</p>
+      <div className="flex items-center gap-3 mt-2">
+        <p className="text-xs text-gray-400 dark:text-gray-600">최근 15주 독서 기록</p>
+        <div className="flex items-center gap-1.5 ml-auto">
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "#8DC18C" }} />
+          <span className="text-[9px] text-gray-400 dark:text-gray-600">~50p</span>
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "#5B8C5A" }} />
+          <span className="text-[9px] text-gray-400 dark:text-gray-600">~100p</span>
+          <div className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: "#2D4A2E" }} />
+          <span className="text-[9px] text-gray-400 dark:text-gray-600">101p+</span>
+        </div>
+      </div>
     </div>
   );
 }
@@ -256,8 +269,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
       }));
   })();
 
-  // 스트릭 캘린더용 읽은 날짜 Set
-  const readDates = new Set(logs.map((l) => l.date));
+  // pagesByDate는 위 집계에서 이미 선언됨 — 스트릭 캘린더에 그대로 전달
 
   return (
     <div className="flex flex-col gap-4">
@@ -378,7 +390,7 @@ export function StatsTab({ userId, gold, streak }: Props) {
       </div>
 
       {/* ── 스트릭 캘린더 ── */}
-      <StreakCalendar readDates={readDates} />
+      <StreakCalendar pagesByDate={pagesByDate} />
 
       {/* ── 월별 완독 목록 ── */}
       <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 border border-gray-100 dark:border-gray-800">

@@ -10,9 +10,9 @@ interface Tab {
 }
 
 const TABS: Tab[] = [
-  { id: "library",      icon: "📖", label: "서재" },
   { id: "character",    icon: "⚔️", label: "캐릭터" },
   { id: "shop",         icon: "🏪", label: "상점" },
+  { id: "library",      icon: "📖", label: "서재" },
   { id: "achievements", icon: "🏆", label: "업적" },
   { id: "stats",        icon: "📊", label: "통계" },
 ];

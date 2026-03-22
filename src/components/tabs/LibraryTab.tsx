@@ -288,7 +288,8 @@ function RecordPageModal({
               type="number"
               min={book.read_pages + 1}
               max={book.total_pages}
-              value={toPage}
+              value={toPage || ""}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setToPage(Number(e.target.value))}
               className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
             />
@@ -392,7 +393,7 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
   // 폼 필드
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
-  const [totalPages, setTotalPages] = useState(300);
+  const [totalPages, setTotalPages] = useState(0);
   const [priorPages, setPriorPages] = useState(0);
   const [genre, setGenre] = useState<Genre>("wisdom");
   const [isbn, setIsbn] = useState("");
@@ -648,7 +649,8 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
               type="number"
               placeholder="전체 페이지"
               min={1}
-              value={totalPages}
+              value={totalPages || ""}
+              onFocus={(e) => e.target.select()}
               onChange={(e) => setTotalPages(Number(e.target.value))}
               className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
             />
@@ -885,25 +887,27 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
   return (
     <div className="flex flex-col gap-4">
       {/* 필터 탭 + 추가 버튼 */}
-      <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1">
-        {(["all", "reading", "complete", "wishlist"] as FilterType[]).map((f) => (
-          <button
-            key={f}
-            onClick={() => setFilter(f)}
-            className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
-              filter === f
-                ? "bg-[#3D5A3E] text-white"
-                : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
-            }`}
-          >
-            {FILTER_LABELS[f]}
-            <span className="ml-1 opacity-60">
-              {f === "all"
-                ? books.length
-                : books.filter((b) => b.status === f).length}
+      <div className="flex items-center gap-2 pb-1">
+        <div className="flex gap-2 overflow-x-auto scrollbar-hide flex-1 min-w-0">
+          {(["all", "reading", "complete", "wishlist"] as FilterType[]).map((f) => (
+            <button
+              key={f}
+              onClick={() => setFilter(f)}
+              className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-medium transition-colors ${
+                filter === f
+                  ? "bg-[#3D5A3E] text-white"
+                  : "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700"
+              }`}
+            >
+              {FILTER_LABELS[f]}
+              <span className="ml-1 opacity-60">
+                {f === "all"
+                  ? books.length
+                  : books.filter((b) => b.status === f).length}
             </span>
-          </button>
-        ))}
+            </button>
+          ))}
+        </div>
         <button
           onClick={() => setAddBookOpen(true)}
           className="flex-shrink-0 px-3 py-1.5 rounded-full text-xs font-medium transition-colors bg-[#C4933F]/15 text-[#A07A2E] dark:bg-[#C4933F]/20 dark:text-[#D4A94F] hover:bg-[#C4933F]/25 dark:hover:bg-[#C4933F]/30"
