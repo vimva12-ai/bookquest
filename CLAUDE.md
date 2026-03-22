@@ -30,7 +30,7 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 ### 핵심 컴포넌트 역할
 
 - **`src/app/page.tsx`** — 서버 컴포넌트. 첫 로드 시 users/user_stats/user_equipment/user_titles/books 5개 테이블을 한 번에 조회하고 없으면 신규 행 생성. `AppShell`에 initialData로 전달.
-- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다.
+- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리.
 - **`src/middleware.ts`** — 모든 요청에서 Supabase 세션 쿠키 갱신. 미인증 사용자는 `/login`으로 리다이렉트.
 
 ### Supabase 클라이언트 두 가지
@@ -46,13 +46,19 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 |--------|------|
 | `users` | 프로필, EXP, 골드, 레벨, 스트릭 |
 | `user_stats` | 4종 스탯 (wisdom/empathy/insight/creation) |
-| `books` | 책 목록 |
+| `books` | 책 목록. `target_date DATE` — 완독 목표일 (nullable) |
 | `reading_logs` | 페이지 기록. `genre` 컬럼 포함 — 책 삭제 후에도 스탯 보존 목적. `book_id`는 `ON DELETE SET NULL` |
+| `reading_notes` | 책별 메모. `page INT NULL`, `is_public BOOL`. `book_id`는 `ON DELETE CASCADE` |
 | `user_equipment` | 장비 6부위 (유저당 1행) |
 | `user_titles` | 해금된 칭호 목록 |
 | `community_book_info` | ISBN 기준 공유 페이지 정보. `page_entries JSONB`에 `[{pages, count}]` 배열 저장. RLS: 누구나 읽기, 인증 사용자만 쓰기 |
 
-초기 설정: `supabase-setup.sql` / 책 삭제 마이그레이션: `supabase-migration-book-delete.sql` / 카카오 API 마이그레이션: `supabase-migration-kakao.sql`
+마이그레이션 파일 (순서대로 적용):
+1. `supabase-setup.sql` — 초기 스키마
+2. `supabase-migration-book-delete.sql` — 책 삭제 시 `reading_logs.book_id` SET NULL
+3. `supabase-migration-kakao.sql` — books에 isbn/publisher/cover_url/description 컬럼
+4. `supabase-migration-memos.sql` — reading_notes 테이블
+5. `supabase-migration-target-date.sql` — books.target_date 컬럼
 
 ### 게임 로직 (`src/lib/game/`)
 
@@ -62,7 +68,7 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 | `stats.ts` | 장르↔스탯 매핑(`GENRE_INFO`), 장비 7등급 상수(`EQUIPMENT_TIERS`), 부위 6종(`EQUIPMENT_SLOTS`) |
 | `titles.ts` | 21개 칭호 정의. `buildTitleContext()` → `getNewlyUnlockedTitles()`로 신규 해금 확인 |
 | `achievements.ts` | 28개 업적 정의. `isAchieved(def, stats)`로 달성 여부 확인 |
-| `quests.ts` | 날짜 시드 기반 의사난수로 일/주/월 퀘스트 3개씩 생성. 같은 날짜면 항상 같은 퀘스트 |
+| `quests.ts` | 날짜 시드 기반 의사난수로 일/주/월 퀘스트 3개씩 생성. 같은 날짜면 항상 같은 퀘스트. **DB 저장 없음 — 클라이언트에서 실시간 계산** |
 
 ### 스탯 계산 방식
 
@@ -95,12 +101,16 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 
 ### 탭 컴포넌트 구조 (`src/components/tabs/`)
 
-- **`LibraryTab.tsx`** — 책 추가/삭제, 페이지 기록. 기록 시 `handleStatChange` 콜백 호출. 책 목록에서 달성률을 `41 / 381p (11%)` 형태로 표시.
+- **`LibraryTab.tsx`** — 책 추가/삭제/페이지 기록/목표일 설정. 기록 시 `handleStatChange` 콜백 호출. 하단에 `AddBookForm`(새 책 추가 폼)이 인라인 렌더링된다.
   - **이미 읽은 페이지**: 책 추가 시 `prior_pages` 필드로 기존 진행도 입력 가능. `books.read_pages`를 초기화하지만 `reading_logs`는 생성하지 않으므로 EXP/골드/스탯에 반영되지 않는다. 이후 `RecordPageModal`로 기록한 페이지만 보상 대상.
+  - **완독 목표일**: `target_date`를 책 추가 시 또는 카드의 "목표일" 버튼(`TargetDateModal`)으로 독립 설정 가능. 목표일이 있으면 카드에 "🎯 N일 남음 · 하루 Xp" 표시 (초과=빨강, 3일 이하=주황).
   - **카카오 검색 연동**: 검색 → 선택 시 제목/저자/출판사/표지/ISBN 자동 입력 + `/api/books/page-info`에서 커뮤니티 페이지 수를 가져와 `total_pages` 자동 설정.
+- **`MemoModal.tsx`** — 책별 메모 관리 모달. `reading_notes` 테이블 CRUD. 페이지 번호(선택), SNS 공유 기능 포함. `LibraryTab`의 "메모" 버튼으로 열린다.
+- **`QuestPanel.tsx`** — 서재 탭 상단에 삽입되는 퀘스트 패널. 일/주/월 탭 전환. AppShell에서 `useMemo`로 계산한 `quests` prop을 받는다. DB 저장 없음.
 - **`CharacterTab.tsx`** — 레벨/EXP/스탯/장비/칭호 표시. `PixelCharacter` + `EquipmentIcon` 사용.
 - **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
-- **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. `reading_logs`를 날짜 Map으로 변환 후 집계.
+- **`AchievementsTab.tsx`** — 28개 업적 카드 목록. `isAchieved(def, stats)`로 달성 여부 계산. `AchievementStats`를 prop으로 받으며 DB 조회 없음.
+- **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. 스트릭 캘린더는 페이지 수에 따라 3단계 색상 (1–50p 연한 초록, 51–100p 기본 초록, 101p+ 진한 초록).
 
 ### 컬러 시스템
 
