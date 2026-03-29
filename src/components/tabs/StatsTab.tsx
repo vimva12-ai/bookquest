@@ -168,16 +168,34 @@ export function StatsTab({ userId, gold, streak }: Props) {
   thisMonday.setDate(today.getDate() - daysFromMon);
   thisMonday.setHours(0, 0, 0, 0);
 
+  // ── 책별 고유 색상 팔레트 (낮은 채도, 시각적으로 구분 가능) ─
+  const BOOK_PALETTE = [
+    "#5B8C8A", // 청록
+    "#8C6B5B", // 테라코타
+    "#6B7A8C", // 슬레이트 블루
+    "#7A8C5B", // 올리브 그린
+    "#8C5B7A", // 모브
+    "#5B6B8C", // 스틸 블루
+    "#8C7A5B", // 샌드
+    "#5B8C6B", // 세이지
+    "#8C5B5B", // 더스티 로즈
+    "#6B5B8C", // 라벤더
+  ];
+
   // ── 책 메타데이터 맵 (책별 색상·제목) ────────────────────
   const DELETED_KEY = "__deleted__";
   const bookMeta = new Map<string, { color: string; title: string }>();
   bookMeta.set(DELETED_KEY, { color: "#9E9E9E", title: "(삭제된 책)" });
+  // 등장 순서대로 팔레트 색상 할당
+  let paletteIdx = 0;
   for (const log of logs) {
     const key = log.book_id ?? DELETED_KEY;
     if (!bookMeta.has(key)) {
       const book = books.find((b) => b.id === key);
       bookMeta.set(key, {
-        color: book ? GENRE_INFO[book.genre].color : "#9E9E9E",
+        color: book
+          ? BOOK_PALETTE[paletteIdx++ % BOOK_PALETTE.length]
+          : "#9E9E9E",
         title: book ? book.title : "(삭제된 책)",
       });
     }
