@@ -2,7 +2,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import type { Book, Genre, CommunityBookInfo } from "@/types/database";
+import type { Book, Genre, CommunityBookInfo, ReadingLog } from "@/types/database";
 import { GENRE_INFO } from "@/lib/game/stats";
 import { toLocalDateStr } from "@/lib/date";
 import { getSupabaseBrowserClient } from "@/lib/supabase/client";
@@ -138,12 +138,14 @@ function calcDailyTarget(book: Book): { pagesPerDay: number; daysLeft: number } 
 // ─── 책 카드 ────────────────────────────────────────────
 function BookCard({
   book,
+  todayPagesRead,
   onRecordPage,
   onDeleteBook,
   onMemo,
   onSetTargetDate,
 }: {
   book: Book;
+  todayPagesRead: number;
   onRecordPage: (book: Book) => void;
   onDeleteBook: (book: Book) => void;
   onMemo: (book: Book) => void;
@@ -215,17 +217,23 @@ function BookCard({
             </span>
           </div>
 
-          {/* 하루 목표 페이지 */}
+          {/* 하루 목표 페이지 + 오늘 달성 여부 */}
           {dailyTarget && (
             <p className={`text-[10px] mt-1 font-medium ${
               dailyTarget.daysLeft <= 0
                 ? "text-red-500 dark:text-red-400"
+                : todayPagesRead >= dailyTarget.pagesPerDay
+                ? "text-[#3D5A3E] dark:text-[#6BA368]"
                 : dailyTarget.daysLeft <= 3
                 ? "text-amber-500 dark:text-amber-400"
                 : "text-[#5B8C5A] dark:text-[#6BA368]"
             }`}>
               {dailyTarget.daysLeft <= 0
                 ? `⚠️ 목표일 초과 — 하루 ${dailyTarget.pagesPerDay < 0 ? "??" : dailyTarget.pagesPerDay}p`
+                : todayPagesRead >= dailyTarget.pagesPerDay
+                ? `✅ 오늘 목표 달성! (${todayPagesRead}/${dailyTarget.pagesPerDay}p)`
+                : todayPagesRead > 0
+                ? `🎯 ${dailyTarget.daysLeft}일 남음 · 하루 ${dailyTarget.pagesPerDay}p (오늘 ${todayPagesRead}p 완료)`
                 : `🎯 ${dailyTarget.daysLeft}일 남음 · 하루 ${dailyTarget.pagesPerDay}p`}
             </p>
           )}
@@ -975,6 +983,7 @@ function AddBookForm({ onAdd, externalOpen, onExternalOpened }: {
 interface Props {
   books: Book[];
   userId: string;
+  logs: ReadingLog[];
   onBooksChange: () => void;
   onStatChange: (expDelta: number, goldDelta: number, streakDelta: number) => void;
   onMemoChange?: () => void;
@@ -982,7 +991,7 @@ interface Props {
 
 type FilterType = "all" | "reading" | "complete" | "wishlist";
 
-export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoChange }: Props) {
+export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, onMemoChange }: Props) {
   const supabase = getSupabaseBrowserClient();
   const [filter, setFilter] = useState<FilterType>("all");
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
@@ -1007,6 +1016,15 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
       if (a.status !== "complete" && b.status === "complete") return -1;
       return 0;
     });
+
+  // 오늘 책별 읽은 페이지 집계 (달성 여부 표시용)
+  const todayStr = toLocalDateStr();
+  const todayPagesByBook = new Map<string, number>();
+  for (const log of logs) {
+    if (log.date === todayStr && log.book_id) {
+      todayPagesByBook.set(log.book_id, (todayPagesByBook.get(log.book_id) ?? 0) + log.pages_read);
+    }
+  }
 
   // 책 추가
   async function handleAddBook(data: BookFormData) {
@@ -1154,7 +1172,7 @@ export function LibraryTab({ books, userId, onBooksChange, onStatChange, onMemoC
           </div>
         ) : (
           filtered.map((book) => (
-            <BookCard key={book.id} book={book} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} onSetTargetDate={setTargetDateBook} />
+            <BookCard key={book.id} book={book} todayPagesRead={todayPagesByBook.get(book.id) ?? 0} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} onSetTargetDate={setTargetDateBook} />
           ))
         )}
       </div>

@@ -284,6 +284,7 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
               <LibraryTab
                 books={books}
                 userId={userId}
+                logs={logs}
                 onBooksChange={refreshBooks}
                 onStatChange={handleStatChange}
                 onMemoChange={refreshNotes}

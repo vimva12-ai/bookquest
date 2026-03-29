@@ -1,0 +1,35 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(claude doctor:*)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjscloudflaredist -type f -name *.js -o -name *.json)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjscloudflaredist -type f -name *.js)",
+      "Bash(xargs grep:*)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjs -name README* -o -name *.md)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjs -name wrangler* -o -name *routes*)",
+      "Bash(grep -r \"_routes\\\\|routes.json\\\\|static.*manifest\" C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjs --include=*.js)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjscloudflaredistclibuild -name *.js)",
+      "WebFetch(domain:developers.cloudflare.com)",
+      "Bash(grep -r \"run_worker_first\\\\|_routes\" C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_moduleswranglerdist --include=*.d.ts)",
+      "Bash(grep -r \"_routes.json\\\\|routes\\\\.json\\\\|staticRoutes\\\\|/\\\\_next/static\" C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjscloudflaredist --include=*.js)",
+      "Bash(grep -r \"createStaticAssets\\\\|static.*assets\" C:UsersvimvaDesktopclaude-code-folderbookquest-appnode_modules@opennextjsawsdistbuild --include=*.js -l)",
+      "Bash(npx tsc:*)",
+      "Bash(npm run:*)",
+      "Bash(command -v supabase)",
+      "Bash(supabase --version)",
+      "Bash(start:*)",
+      "Bash(python3:*)",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-apppublicassetscharacterslpc_entry -name *BODY_male* -o -name *LEGS_pants* -o -name *TORSO_*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(ls /c/Users/vimva/Desktop/claude-code-folder/bookquest-app/node_modules/.bin/next*)",
+      "Bash(git push:*)",
+      "Bash(grep -r \"prior_pages\\\\|read_pages\" src/types --include=*.ts --include=*.tsx)",
+      "Bash(find /c/Users/vimva/Desktop/claude-code-folder/bookquest-app -type f \\\\\\(-name *.sql -o -name *schema* -o -name *migration* \\\\\\))",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "WebSearch",
+      "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appsrc -name *Modal* -type f)",
+      "Bash(grep -r \"handleStatChange\\\\|refreshStats\" C:UsersvimvaDesktopclaude-code-folderbookquest-appsrc --include=*.tsx --include=*.ts)"
+    ]
+  }
+}
