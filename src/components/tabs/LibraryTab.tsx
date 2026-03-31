@@ -1008,12 +1008,30 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
     return () => clearTimeout(t);
   }, [toast]);
 
-  // 필터 적용 + 완독 책 맨 아래 정렬
+  // 책별 최근 읽은 날짜 맵
+  const lastReadByBook = new Map<string, string>();
+  for (const log of logs) {
+    if (log.book_id) {
+      const prev = lastReadByBook.get(log.book_id);
+      if (!prev || log.date > prev) lastReadByBook.set(log.book_id, log.date);
+    }
+  }
+
+  // 필터 적용 + 정렬: 완독↓, 목표일 있는 책↑, 최근 읽은 책↑
   const filtered = books
     .filter((b) => filter === "all" || b.status === filter)
     .sort((a, b) => {
+      // 1) 완독 책은 맨 아래
       if (a.status === "complete" && b.status !== "complete") return 1;
       if (a.status !== "complete" && b.status === "complete") return -1;
+      // 2) 목표일이 있는 책 우선
+      const aHasTarget = a.target_date ? 1 : 0;
+      const bHasTarget = b.target_date ? 1 : 0;
+      if (aHasTarget !== bHasTarget) return bHasTarget - aHasTarget;
+      // 3) 최근 읽은 책 우선 (기록 없으면 맨 뒤)
+      const aLast = lastReadByBook.get(a.id) ?? "";
+      const bLast = lastReadByBook.get(b.id) ?? "";
+      if (aLast !== bLast) return aLast > bLast ? -1 : 1;
       return 0;
     });
 
