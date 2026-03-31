@@ -1013,7 +1013,7 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
   for (const log of logs) {
     if (log.book_id) {
       const prev = lastReadByBook.get(log.book_id);
-      if (!prev || log.date > prev) lastReadByBook.set(log.book_id, log.date);
+      if (!prev || log.created_at > prev) lastReadByBook.set(log.book_id, log.created_at);
     }
   }
 
