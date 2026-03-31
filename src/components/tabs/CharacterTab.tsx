@@ -98,6 +98,24 @@ function TitleModal({
   );
 }
 
+// ─── 눈 아이콘 (표시/숨김) ──────────────────────────────
+function EyeIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+      <circle cx="12" cy="12" r="3" />
+    </svg>
+  );
+}
+function EyeOffIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="12" height="12" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24" />
+      <line x1="1" y1="1" x2="23" y2="23" />
+    </svg>
+  );
+}
+
 // ─── 캐릭터 탭 메인 ─────────────────────────────────────
 interface Props {
   data: CharacterData;
@@ -109,6 +127,34 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
   const { profile, stats, equipment, titles } = data;
   const { level, exp, gold, selected_title_id } = profile;
   const [showTitleModal, setShowTitleModal] = useState(false);
+
+  // 부위별 숨김 설정 (localStorage 저장, DB 불필요)
+  const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(() => {
+    if (typeof window === "undefined") return new Set();
+    try {
+      const stored = localStorage.getItem("bq-hidden-slots");
+      return stored ? new Set(JSON.parse(stored) as string[]) : new Set();
+    } catch {
+      return new Set();
+    }
+  });
+
+  function toggleHide(slotId: string) {
+    setHiddenSlots((prev) => {
+      const next = new Set(prev);
+      if (next.has(slotId)) next.delete(slotId);
+      else next.add(slotId);
+      try {
+        localStorage.setItem("bq-hidden-slots", JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  }
+
+  // 숨긴 부위는 null 처리해 캐릭터 미리보기에 반영
+  const visibleEquipment = Object.fromEntries(
+    Object.entries(equipment).map(([k, v]) => [k, hiddenSlots.has(k) ? null : v])
+  ) as Partial<typeof equipment>;
 
   const expToNext = getExpToNextLevel(level);
   const expProgress = getExpProgress(exp, level);
@@ -131,8 +177,8 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
           </span>
         </button>
 
-        {/* 픽셀 캐릭터 */}
-        <PixelCharacter equipment={equipment} size={128} />
+        {/* 픽셀 캐릭터 (숨긴 부위 제외) */}
+        <PixelCharacter equipment={visibleEquipment} size={128} />
 
         {/* 레벨 */}
         <div className="text-center">
@@ -176,18 +222,37 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
 
       {/* ── 장착 장비 ── */}
       <div className="bg-white dark:bg-[#242B24] rounded-2xl p-4 shadow-sm border border-gray-100 dark:border-gray-800">
-        <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-4 text-sm">⚔️ 장비</h3>
+        <h3 className="font-bold text-gray-800 dark:text-gray-100 mb-1 text-sm">⚔️ 장비</h3>
+        <p className="text-[10px] text-gray-400 dark:text-gray-500 mb-3">눈 아이콘을 눌러 부위별 표시를 숨길 수 있어요</p>
         <div className="grid grid-cols-3 gap-2">
           {EQUIPMENT_SLOTS.map((slot) => {
             const tier = equipment[slot.id as keyof typeof equipment] as EquipmentTier | null;
             const tierInfo = EQUIPMENT_TIERS.find((t) => t.id === tier);
+            const isHidden = hiddenSlots.has(slot.id);
             return (
-              <div key={slot.id} className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50">
-                <EquipmentIcon slotId={slot.id} size={24} tier={tier} />
+              <div
+                key={slot.id}
+                className={`relative flex flex-col items-center gap-1 p-2 rounded-xl border transition-opacity ${
+                  isHidden
+                    ? "border-gray-100 dark:border-gray-800 bg-gray-100 dark:bg-gray-800/30 opacity-50"
+                    : "border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-800/50"
+                }`}
+              >
+                {/* 숨김 토글 — 장비 있을 때만 표시 */}
+                {tier && (
+                  <button
+                    onClick={() => toggleHide(slot.id)}
+                    className="absolute top-1 right-1 text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    title={isHidden ? "표시하기" : "숨기기"}
+                  >
+                    {isHidden ? <EyeOffIcon /> : <EyeIcon />}
+                  </button>
+                )}
+                <EquipmentIcon slotId={slot.id} size={24} tier={isHidden ? null : tier} />
                 <span className="text-[10px] text-gray-400 dark:text-gray-500">{slot.label}</span>
                 {tierInfo ? (
-                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: TIER_COLOR[tierInfo.id] }}>
-                    {tierInfo.label}
+                  <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full text-white" style={{ backgroundColor: isHidden ? "#9CA3AF" : TIER_COLOR[tierInfo.id] }}>
+                    {isHidden ? "숨김" : tierInfo.label}
                   </span>
                 ) : (
                   <span className="text-[10px] text-gray-300 dark:text-gray-600">없음</span>
