@@ -29,7 +29,11 @@
       "Bash(git commit:*)",
       "WebSearch",
       "Bash(find C:UsersvimvaDesktopclaude-code-folderbookquest-appsrc -name *Modal* -type f)",
-      "Bash(grep -r \"handleStatChange\\\\|refreshStats\" C:UsersvimvaDesktopclaude-code-folderbookquest-appsrc --include=*.tsx --include=*.ts)"
+      "Bash(grep -r \"handleStatChange\\\\|refreshStats\" C:UsersvimvaDesktopclaude-code-folderbookquest-appsrc --include=*.tsx --include=*.ts)",
+      "Bash(find src:*)",
+      "Bash(ls -la /c/Users/vimva/Desktop/claude-code-folder/bookquest-app/*.*)",
+      "Bash(xargs wc:*)",
+      "Bash(wc -l /c/Users/vimva/Desktop/claude-code-folder/bookquest-app/src/app/api/*/*.ts)"
     ]
   }
 }

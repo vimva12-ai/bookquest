@@ -11,7 +11,7 @@ npm run lint      # ESLint
 npx tsc --noEmit  # 빌드 없이 타입 체크만
 ```
 
-빌드는 TypeScript 오류 0개일 때만 완료로 간주한다.
+테스트 스위트는 없다. **`npx tsc --noEmit` (타입체크)가 유일한 자동 검증 수단**이므로, 빌드가 TypeScript 오류 0개일 때만 완료로 간주한다.
 
 배포는 `git push origin master` → GitHub → Cloudflare Pages 자동 빌드 방식을 사용한다. Windows에서 `npm run deploy` (로컬 직접 배포)는 OpenNext 호환성 이슈로 불안정하다.
 
@@ -36,6 +36,18 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 - **`src/app/page.tsx`** — 서버 컴포넌트. 첫 로드 시 users/user_stats/user_equipment/user_titles/books 5개 테이블을 한 번에 조회하고 없으면 신규 행 생성. `AppShell`에 initialData로 전달.
 - **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리.
 - **`src/middleware.ts`** — 모든 요청에서 Supabase 세션 쿠키 갱신. 미인증 사용자는 `/login`으로 리다이렉트.
+
+### 인증 흐름
+
+```
+Google 로그인 → signInWithOAuth({ provider: "google" })
+  → Supabase Auth 리다이렉트
+  → /auth/callback?code=... → exchangeCodeForSession(code) → 세션 쿠키
+  → / 리다이렉트
+
+매 요청 → middleware.ts가 Supabase 세션 쿠키 갱신
+  → 미인증 시 /login 리다이렉트 (공개 경로: /login, /auth/callback)
+```
 
 ### Supabase 클라이언트 두 가지
 
@@ -115,6 +127,23 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 - **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
 - **`AchievementsTab.tsx`** — 28개 업적 카드 목록. `isAchieved(def, stats)`로 달성 여부 계산. `AchievementStats`를 prop으로 받으며 DB 조회 없음.
 - **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. 스트릭 캘린더는 페이지 수에 따라 3단계 색상 (1–50p 연한 초록, 51–100p 기본 초록, 101p+ 진한 초록).
+
+### 서재 목록 정렬 규칙
+
+`LibraryTab.tsx`의 `filtered` 배열은 다음 우선순위로 정렬된다:
+1. **완독 책은 맨 아래** — `status === "complete"`
+2. **목표일 있는 책 우선** — `target_date`가 설정된 책이 위로
+3. **최근 읽은 책 우선** — `reading_logs`에서 책별 마지막 기록 날짜 기준 내림차순 (기록 없으면 맨 뒤)
+
+### 환경변수
+
+```
+NEXT_PUBLIC_SUPABASE_URL      # Supabase 프로젝트 URL (클라이언트)
+NEXT_PUBLIC_SUPABASE_ANON_KEY # Supabase anon key (클라이언트)
+KAKAO_REST_API_KEY            # 카카오 책 검색 API (서버 전용)
+```
+
+`.env.local.example` 참고. Cloudflare Pages 환경변수에도 동일하게 설정 필요.
 
 ### 날짜 처리 규칙 (Critical)
 
