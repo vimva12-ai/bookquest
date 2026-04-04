@@ -43,6 +43,7 @@ export const EXP_BONUS_COMPLETE = 50;
 // 메모 작성 EXP
 export const EXP_PER_MEMO = 5;
 
-// 골드: 1p = 1G, 완독 +30G
+// 골드: 1p = 1G, 완독 +30G, 빠른 완독 보너스 +50G
 export const GOLD_PER_PAGE = 1;
 export const GOLD_BONUS_COMPLETE = 30;
+export const GOLD_BONUS_FAST_COMPLETE = 50;

@@ -11,6 +11,7 @@ import {
   EXP_BONUS_COMPLETE,
   GOLD_PER_PAGE,
   GOLD_BONUS_COMPLETE,
+  GOLD_BONUS_FAST_COMPLETE,
 } from "@/lib/game/exp";
 import { MemoModal } from "@/components/tabs/MemoModal";
 
@@ -1103,8 +1104,35 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
     if (!recordingBook) return;
     const newPages = toPage - recordingBook.read_pages;
     const willComplete = toPage >= recordingBook.total_pages;
+
+    // 빠른 완독 보너스 계산
+    let fastCompleteBonus = 0;
+    let fastBonusMsg = "";
+    if (willComplete) {
+      const otherCompleted = books.filter(
+        (b) => b.status === "complete" && b.completed_at && b.id !== recordingBook.id
+      );
+      if (otherCompleted.length > 0) {
+        const avgDays =
+          otherCompleted.reduce((sum, b) => {
+            return (
+              sum +
+              (new Date(b.completed_at!).getTime() - new Date(b.created_at).getTime()) /
+                (1000 * 60 * 60 * 24)
+            );
+          }, 0) / otherCompleted.length;
+        const currentDays =
+          (Date.now() - new Date(recordingBook.created_at).getTime()) / (1000 * 60 * 60 * 24);
+        if (currentDays < avgDays) {
+          fastCompleteBonus = GOLD_BONUS_FAST_COMPLETE;
+          const saved = Math.round(avgDays - currentDays);
+          fastBonusMsg = `🏆 평균보다 ${saved}일 빠른 완독! +${GOLD_BONUS_FAST_COMPLETE}G 보너스!`;
+        }
+      }
+    }
+
     const expDelta = newPages * EXP_PER_PAGE + (willComplete ? EXP_BONUS_COMPLETE : 0);
-    const goldDelta = newPages * GOLD_PER_PAGE + (willComplete ? GOLD_BONUS_COMPLETE : 0);
+    const goldDelta = newPages * GOLD_PER_PAGE + (willComplete ? GOLD_BONUS_COMPLETE : 0) + fastCompleteBonus;
 
     // 1. 독서 로그 저장 (genre 포함 — 책 삭제 후에도 스탯 유지 목적)
     await supabase.from("reading_logs").insert({
@@ -1137,6 +1165,8 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
 
     // 4. 스탯 업데이트 (EXP·골드·스트릭)
     onStatChange(expDelta, goldDelta, isFirstTodayLog ? 1 : 0);
+
+    if (fastBonusMsg) setToast(fastBonusMsg);
 
     setRecordingBook(null);
     onBooksChange();

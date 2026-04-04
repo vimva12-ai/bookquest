@@ -149,6 +149,20 @@ export function StatsTab({ userId, gold, streak }: Props) {
   const totalPages     = logs.reduce((s, l) => s + l.pages_read, 0);
   const completedBooks = books.filter((b) => b.status === "complete").length;
 
+  // 평균 완독 기간 (추가일 → 완독일, 일 단위)
+  const completedWithDates = books.filter((b) => b.status === "complete" && b.completed_at && b.created_at);
+  const avgCompletionDays = completedWithDates.length > 0
+    ? Math.round(
+        completedWithDates.reduce((sum, b) => {
+          return (
+            sum +
+            (new Date(b.completed_at!).getTime() - new Date(b.created_at).getTime()) /
+              (1000 * 60 * 60 * 24)
+          );
+        }, 0) / completedWithDates.length
+      )
+    : null;
+
   // 날짜별 전체 페이지 맵
   const pagesByDate = new Map<string, number>();
   for (const log of logs) {
@@ -357,12 +371,15 @@ export function StatsTab({ userId, gold, streak }: Props) {
   return (
     <div className="flex flex-col gap-4">
       {/* ── 요약 카드 ── */}
-      <div className="grid grid-cols-3 gap-3">
+      <div className="grid grid-cols-2 gap-3">
         <SummaryCard icon="🔥" label="연속 독서" value={`${streak}일`}
           bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
         <SummaryCard icon="🪙" label="보유 골드" value={`${gold.toLocaleString()}G`}
           bg="bg-[#F5EDE0] dark:bg-[#3A2E1A]/20" />
         <SummaryCard icon="📚" label="완독한 책" value={`${completedBooks}권`}
+          bg="bg-[#EEF4EE] dark:bg-[#2D4A2E]/20" />
+        <SummaryCard icon="⏱️" label="평균 완독 기간"
+          value={avgCompletionDays !== null ? `${avgCompletionDays}일` : "-"}
           bg="bg-[#EEF4EE] dark:bg-[#2D4A2E]/20" />
       </div>
 

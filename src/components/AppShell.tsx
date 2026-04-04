@@ -59,6 +59,35 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
   const [books, setBooks] = useState(initialBooks);
   const [logs, setLogs] = useState(initialLogs);
   const [notes, setNotes] = useState<ReadingNote[]>([]);
+  const [forgottenBooks, setForgottenBooks] = useState<Book[]>([]);
+
+  // 7일 이상 읽지 않은 책 체크 (하루 1회)
+  useEffect(() => {
+    const today = toLocalDateStr();
+    const lastShown = localStorage.getItem("bq-reminder-date");
+    if (lastShown === today) return;
+
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const sevenDaysAgoStr = toLocalDateStr(sevenDaysAgo);
+
+    const forgotten = books.filter((b) => {
+      if (b.status !== "reading") return false;
+      const bookLogs = logs.filter((l) => l.book_id === b.id);
+      if (bookLogs.length === 0) {
+        return new Date(b.created_at) <= sevenDaysAgo;
+      }
+      const lastDate = bookLogs.reduce((latest, l) => (l.date > latest ? l.date : latest), "");
+      return lastDate < sevenDaysAgoStr;
+    });
+
+    if (forgotten.length > 0) {
+      setForgottenBooks(forgotten);
+      localStorage.setItem("bq-reminder-date", today);
+    }
+  // 마운트 시 1회만 실행
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // 책 목록 새로고침
   const refreshBooks = useCallback(async () => {
@@ -274,6 +303,50 @@ export function AppShell({ initialCharacter, initialBooks, initialLogs, userId }
   return (
     <div className="min-h-screen bg-[#F5F2ED] dark:bg-[#1A1F1A]">
       <Header gold={character.profile.gold} level={character.profile.level} />
+
+      {/* 7일 미열람 책 리마인드 팝업 */}
+      {forgottenBooks.length > 0 && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
+          <div className="absolute inset-0 bg-black/40" onClick={() => setForgottenBooks([])} />
+          <div className="relative bg-white dark:bg-[#242B24] rounded-2xl shadow-xl w-full max-w-sm p-5 flex flex-col gap-3">
+            <div className="text-center">
+              <p className="text-3xl mb-1">📚</p>
+              <h2 className="text-base font-bold text-gray-800 dark:text-gray-100">저를 잊으셨나요?</h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                7일 이상 읽지 않은 책이 있어요
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 max-h-60 overflow-y-auto">
+              {forgottenBooks.map((book) => (
+                <div key={book.id} className="flex items-center gap-3 bg-[#F5F2ED] dark:bg-[#1A1F1A] rounded-xl px-3 py-2.5">
+                  {book.cover_url ? (
+                    <img src={book.cover_url} alt={book.title} className="w-9 h-12 object-cover rounded" />
+                  ) : (
+                    <div className="w-9 h-12 bg-gray-200 dark:bg-gray-700 rounded flex items-center justify-center text-lg">📖</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-800 dark:text-gray-100 truncate">{book.title}</p>
+                    <p className="text-xs text-gray-400 dark:text-gray-500 truncate">{book.author}</p>
+                    <div className="mt-1 h-1 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden w-full">
+                      <div
+                        className="h-full rounded-full bg-[#5B8C5A]"
+                        style={{ width: `${Math.min(100, Math.round((book.read_pages / book.total_pages) * 100))}%` }}
+                      />
+                    </div>
+                    <p className="text-[10px] text-gray-400 mt-0.5">{book.read_pages} / {book.total_pages}p</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => setForgottenBooks([])}
+              className="w-full py-2.5 bg-[#3D5A3E] hover:bg-[#2D4A2E] text-white rounded-xl text-sm font-medium transition-colors"
+            >
+              다시 읽어볼게요!
+            </button>
+          </div>
+        </div>
+      )}
 
       <main className="pt-12 pb-16 px-4 min-h-screen">
         <div className="max-w-lg mx-auto py-4">
