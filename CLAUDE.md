@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ```bash
 npm run dev       # 개발 서버 (Turbopack, http://localhost:3000)
-npm run build     # 프로덕션 빌드 (TypeScript 체크 포함)
+npm run build     # 프로덕션 빌드 (next build; 타입 오류가 있어도 빌드는 통과할 수 있으므로 tsc 별도 실행 필요)
 npm run lint      # ESLint
 npx tsc --noEmit  # 빌드 없이 타입 체크만
 ```
@@ -34,7 +34,7 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 ### 핵심 컴포넌트 역할
 
 - **`src/app/page.tsx`** — 서버 컴포넌트. 첫 로드 시 users/user_stats/user_equipment/user_titles/books 5개 테이블을 한 번에 조회하고 없으면 신규 행 생성. `AppShell`에 initialData로 전달.
-- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리.
+- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리. `forgottenBooks` state에 7일 이상 미열람 중인 reading 상태 책을 저장하고 리마인드 배너를 표시한다 (하루 1회, `localStorage` 키 `'bq-reminder-date'`로 중복 방지).
 - **`src/middleware.ts`** — 모든 요청에서 Supabase 세션 쿠키 갱신. 미인증 사용자는 `/login`으로 리다이렉트.
 
 ### 인증 흐름
@@ -80,7 +80,7 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 
 | 파일 | 내용 |
 |------|------|
-| `exp.ts` | 레벨 커브 공식(`30 * level^1.4`), EXP→레벨 변환. 보상 상수: `EXP_PER_PAGE=1`, `EXP_BONUS_COMPLETE=50`, `GOLD_PER_PAGE=1`, `GOLD_BONUS_COMPLETE=30` |
+| `exp.ts` | 레벨 커브 공식(`30 * level^1.4`), EXP→레벨 변환. 보상 상수: `EXP_PER_PAGE=1`, `EXP_BONUS_COMPLETE=50`, `EXP_PER_MEMO=5`, `GOLD_PER_PAGE=1`, `GOLD_BONUS_COMPLETE=30`, `GOLD_BONUS_FAST_COMPLETE=50` |
 | `stats.ts` | 장르↔스탯 매핑(`GENRE_INFO`), 장비 7등급 상수(`EQUIPMENT_TIERS`), 부위 6종(`EQUIPMENT_SLOTS`) |
 | `titles.ts` | 21개 칭호 정의. `buildTitleContext()` → `getNewlyUnlockedTitles()`로 신규 해금 확인 |
 | `achievements.ts` | 28개 업적 정의. `isAchieved(def, stats)`로 달성 여부 확인 |
