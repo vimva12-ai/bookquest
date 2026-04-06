@@ -1,10 +1,24 @@
 // 이 파일이 하는 일: LPC 레이어드 스프라이트 — 슬롯당 고정 형태 + 등급별 색상 필터, 망토·무기는 SVG
+//
+// 렌더링 구조:
+//   [z=0] 망토 SVG (스프라이트 뒤, TIER_COLOR fill)
+//   [z=1..n] 스프라이트 레이어 (몸체→갑옷→신발→투구→방패 순, getSlotTierFilter()로 등급 색상)
+//   [z=n+1] 무기 SVG (맨 앞, TIER_COLOR fill)
+//
+// 스프라이트 시트: 576×256px, 64×64 프레임, 9열×4행 (행 순서: 북/서/남/동)
+//   Idle = 남쪽(행 2)의 열 0 프레임
+//   backgroundPosition으로 해당 프레임 크롭
+//
+// SVG 수정 시: shapeRendering="crispEdges" 필수, 좌표는 64×64 viewBox 기준, size prop으로 스케일링
 import { TIER_COLOR } from "@/lib/game/stats";
 import type { UserEquipment, EquipmentTier } from "@/types/database";
+
+export type CharacterGender = "male" | "female";
 
 interface Props {
   equipment: Partial<UserEquipment>;
   size?: number; // 기본 144px
+  gender?: CharacterGender;
 }
 
 const BASE = "/assets/characters/lpc_entry/png/walkcycle";
@@ -34,12 +48,17 @@ interface SpriteLayer {
   filter?: string;
 }
 
-function getCharacterLayers(equipment: Partial<UserEquipment>): SpriteLayer[] {
+function getCharacterLayers(equipment: Partial<UserEquipment>, gender: CharacterGender): SpriteLayer[] {
   const layers: SpriteLayer[] = [];
 
-  // ── 기본 몸체 (항상 표시) ──
-  layers.push({ src: `${BASE}/BODY_male.png` });
-  layers.push({ src: `${BASE}/LEGS_pants_greenish.png` });
+  // ── 기본 몸체 (성별에 따라 다른 스프라이트) ──
+  if (gender === "female") {
+    layers.push({ src: `${BASE}/BODY_female.png` });
+    layers.push({ src: `${BASE}/LEGS_robe_skirt.png` });
+  } else {
+    layers.push({ src: `${BASE}/BODY_male.png` });
+    layers.push({ src: `${BASE}/LEGS_pants_greenish.png` });
+  }
   layers.push({ src: `${BASE}/TORSO_leather_armor_shirt_white.png` });
   layers.push({ src: `${BASE}/HEAD_hair_blonde.png` });
 
@@ -73,8 +92,8 @@ function getCharacterLayers(equipment: Partial<UserEquipment>): SpriteLayer[] {
   return layers;
 }
 
-export function PixelCharacter({ equipment, size = 144 }: Props) {
-  const layers = getCharacterLayers(equipment);
+export function PixelCharacter({ equipment, size = 144, gender = "male" }: Props) {
+  const layers = getCharacterLayers(equipment, gender);
   const scale = size / FRAME;
 
   const bgX = 0;

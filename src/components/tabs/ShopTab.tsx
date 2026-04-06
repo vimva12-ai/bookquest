@@ -4,7 +4,7 @@
 import { useState, useEffect } from "react";
 import { EQUIPMENT_SLOTS, EQUIPMENT_TIERS, TIER_COLOR } from "@/lib/game/stats";
 import { EquipmentIcon } from "@/components/character/EquipmentIcon";
-import { PixelCharacter } from "@/components/character/PixelCharacter";
+import { PixelCharacter, type CharacterGender } from "@/components/character/PixelCharacter";
 import type { UserEquipment, EquipmentSlot, EquipmentTier } from "@/types/database";
 
 interface Props {
@@ -17,6 +17,10 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
   const [activeSlot, setActiveSlot] = useState<EquipmentSlot>("helmet");
   const [buying, setBuying] = useState(false);
   const [previewTier, setPreviewTier] = useState<EquipmentTier | null>(equipment[activeSlot]);
+  const [gender] = useState<CharacterGender>(() => {
+    if (typeof window === "undefined") return "male";
+    return (localStorage.getItem("bq-character-gender") as CharacterGender) ?? "male";
+  });
 
   // 슬롯 변경 시 미리보기를 현재 장착 등급으로 리셋
   useEffect(() => {
@@ -93,7 +97,7 @@ export function ShopTab({ gold, equipment, onPurchase }: Props) {
       <div className="bg-gradient-to-r from-[#EEF3EE] to-[#F5F5F0] dark:from-[#1F2A1F] dark:to-[#242B24] rounded-2xl p-3 border border-[#D4E4D4] dark:border-[#3D5A3E]/30 flex items-center gap-4">
         {/* 픽셀 캐릭터 */}
         <div className="shrink-0 flex items-center justify-center w-[72px] h-[72px]">
-          <PixelCharacter equipment={previewEquipment} size={72} />
+          <PixelCharacter equipment={previewEquipment} size={72} gender={gender} />
         </div>
 
         {/* 미리보기 정보 */}

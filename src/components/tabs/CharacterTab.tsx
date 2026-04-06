@@ -2,7 +2,7 @@
 "use client";
 
 import { useState } from "react";
-import { PixelCharacter } from "@/components/character/PixelCharacter";
+import { PixelCharacter, type CharacterGender } from "@/components/character/PixelCharacter";
 import { EquipmentIcon } from "@/components/character/EquipmentIcon";
 import { GENRE_INFO, EQUIPMENT_SLOTS, TIER_COLOR, EQUIPMENT_TIERS } from "@/lib/game/stats";
 import { getExpToNextLevel, getExpProgress } from "@/lib/game/exp";
@@ -128,6 +128,17 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
   const { level, exp, gold, selected_title_id } = profile;
   const [showTitleModal, setShowTitleModal] = useState(false);
 
+  // 성별 설정 (localStorage 저장, DB 불필요)
+  const [gender, setGender] = useState<CharacterGender>(() => {
+    if (typeof window === "undefined") return "male";
+    return (localStorage.getItem("bq-character-gender") as CharacterGender) ?? "male";
+  });
+
+  function toggleGender(g: CharacterGender) {
+    setGender(g);
+    try { localStorage.setItem("bq-character-gender", g); } catch {}
+  }
+
   // 부위별 숨김 설정 (localStorage 저장, DB 불필요)
   const [hiddenSlots, setHiddenSlots] = useState<Set<string>>(() => {
     if (typeof window === "undefined") return new Set();
@@ -177,8 +188,32 @@ export function CharacterTab({ data, titleCtx, onTitleChange }: Props) {
           </span>
         </button>
 
+        {/* 성별 토글 */}
+        <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-xl p-1">
+          <button
+            onClick={() => toggleGender("male")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              gender === "male"
+                ? "bg-white dark:bg-[#3D5A3E] text-gray-800 dark:text-gray-100 shadow-sm"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+            }`}
+          >
+            ♂ 남자
+          </button>
+          <button
+            onClick={() => toggleGender("female")}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold transition-all ${
+              gender === "female"
+                ? "bg-white dark:bg-[#3D5A3E] text-gray-800 dark:text-gray-100 shadow-sm"
+                : "text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-400"
+            }`}
+          >
+            ♀ 여자
+          </button>
+        </div>
+
         {/* 픽셀 캐릭터 (숨긴 부위 제외) */}
-        <PixelCharacter equipment={visibleEquipment} size={128} />
+        <PixelCharacter equipment={visibleEquipment} size={128} gender={gender} />
 
         {/* 레벨 */}
         <div className="text-center">
