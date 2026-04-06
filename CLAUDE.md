@@ -15,6 +15,13 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 
 배포는 `git push origin master` → GitHub → Cloudflare Pages 자동 빌드 방식을 사용한다. Windows에서 `npm run deploy` (로컬 직접 배포)는 OpenNext 호환성 이슈로 불안정하다.
 
+## 절대 하지 말 것 (Critical Rules)
+
+1. **`new Date().toISOString().slice(0, 10)` 금지** → `toLocalDateStr()` 사용 (`src/lib/date.ts`). UTC 기준이라 KST 자정~오전 9시 사이에 어제 날짜가 반환됨.
+2. **`supabase/client.ts`를 컴포넌트 body에서 직접 호출 금지** → `useEffect`/이벤트 핸들러 안에서만. SSR 시 env var 없이 실행되어 빌드 오류 발생.
+3. **`auth.currentUser` 직접 접근 금지** → `resolveUser()` 사용. 페이지 로드 직후 auth 복원 중에는 `null` 반환.
+4. **AppShell 없이 탭 컴포넌트에서 직접 DB write 금지** → 반드시 `handleStatChange` 등 AppShell 콜백을 통해 실행.
+
 ## 프리뷰 정책
 
 **preview_start는 stop hook 때문에 항상 실행**하되, 스크린샷이나 UI 검증 결과를 사용자에게 보여줄 필요 없다. 이 앱은 Google OAuth 로그인이 필요해 프리뷰에서 실제 화면을 볼 수 없다. **빌드/타입체크 통과 여부만 확인하고 종료**한다.
@@ -51,7 +58,7 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 
 ### Supabase 클라이언트 두 가지
 
-- `src/lib/supabase/client.ts` — 브라우저 전용 싱글턴(`createBrowserClient`). **컴포넌트 body에서 직접 호출하면 SSR 시 env var 없이 실행되어 빌드 오류가 난다.** 반드시 이벤트 핸들러나 `useEffect` 안에서 호출할 것.
+- `src/lib/supabase/client.ts` — 브라우저 전용 싱글턴(`createBrowserClient`). → Critical Rules #2 참고.
 - `src/lib/supabase/server.ts` — 서버 컴포넌트/Route Handler 전용(`createServerClient`). 쿠키로 세션을 읽는다.
 
 ### DB 스키마
@@ -102,18 +109,23 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 
 ### 캐릭터 렌더링 (`src/components/character/`)
 
-**`PixelCharacter.tsx`** — LPC 스프라이트 + SVG 오버레이로 캐릭터를 렌더링한다.
+스프라이트 파일은 `public/assets/sprites/`에 위치한다. 파일명 규칙:
+- 캐릭터: `char_male.png`, `char_female.png`
+- 장비: `{슬롯}_{등급}.png` (예: `helmet_gold.png`, `boots_challenger.png`)
 
-- **스프라이트 시트**: `public/assets/characters/lpc_entry/png/walkcycle/` — 576×256px, 64×64 프레임, 9열×4행 (행 순서: 북/서/남/동). 행 2(남쪽)의 열 0이 Idle 프레임. CSS `backgroundImage` + `backgroundPosition`으로 레이어를 겹친다.
-- **장비별 렌더링 방식**:
-  - 갑옷/신발/투구/방패: PNG 스프라이트 레이어 + 슬롯별 `getSlotTierFilter()` CSS 필터로 7등급 색상 표현 (iron=grayscale, bronze=sepia, silver/gold/platinum/master/challenger=hue-rotate 조합).
-  - **망토**: SVG 오버레이 (z-index 0, 스프라이트 뒤). 어깨 아래(y=32)에서 시작, 윗부분을 2px→3px→4px→5px로 둥글게 테이퍼링. 발끝(y=57)까지 연장. `TIER_COLOR[tier]`를 `fill`로 주입.
-  - **무기**: SVG 오버레이 (z-index 최상단). 롱소드 — 칼날(혈조+하이라이트), 크로스가드(중앙 보석), 가죽 그립(교차 색상), 폼멜. 오른손 위치(x≈19-21, y≈38-46)에 맞춰 배치. `TIER_COLOR[tier]`로 금속 부분 채색.
-- **SVG 수정 시 주의**: `shapeRendering="crispEdges"` 필수 (픽셀아트 선명도). 좌표는 64×64 viewBox 기준이며, `size` prop으로 스케일링.
+슬롯 ID: `helmet` · `armor` · `cloak` · `weapon` · `shield` · `boots`  
+등급 ID: `iron` · `bronze` · `silver` · `gold` · `platinum` · `master` · `challenger`
 
-**`EquipmentIcon.tsx`** — 외부 이미지 없이 **인라인 SVG**로 슬롯별 아이콘을 그린다. `fill={TIER_COLOR[tier]}`로 등급 색상을 주입하며 미장착 시 `#C8D0C8`.
+**`PixelCharacter.tsx`** — `gender`(`"male"|"female"`)에 따라 베이스 캐릭터 PNG를 렌더링하고, `equipment` prop에서 장착된 슬롯의 장비 아이콘을 절대 위치로 오버레이한다.
+- 장비 오버레이 위치는 `EQUIPMENT_POSITIONS` 상수(x/y 비율)로 제어. 위치 조정 시 이 상수만 수정.
+- 장비 아이콘 크기: `size * 0.30` (최소 18px)
+- `cloak`은 z-index 1 (캐릭터 뒤), 나머지 장비는 z-index 3 (캐릭터 앞)
 
-- License: LPC 에셋은 CC-BY-SA 3.0. 에셋 수정 시 크레딧(`CreditsModal.tsx`) 업데이트 필요.
+**`EquipmentIcon.tsx`** — 장착 중이면 `public/assets/sprites/{슬롯}_{등급}.png` 이미지, 미장착이면 슬롯 모양의 인라인 SVG 플레이스홀더(회색 `#C8D0C8`) 표시.
+
+**성별 선택**: `localStorage` 키 `'bq-character-gender'`(`"male"|"female"`)에 저장. `CharacterTab`에서 토글, `ShopTab`은 마운트 시 읽어 미리보기에 반영. `AppShell`을 거치지 않으므로 탭 전환 후 ShopTab 진입 시 최신값 반영됨.
+
+새 스프라이트 추가 시: `public/assets/sprites/`에 파일 배치만 하면 되며 코드 변경 불필요 (파일명 규칙만 지킬 것).
 
 ### 탭 컴포넌트 구조 (`src/components/tabs/`)
 
@@ -147,17 +159,13 @@ KAKAO_REST_API_KEY            # 카카오 책 검색 API (서버 전용)
 
 ### 날짜 처리 규칙 (Critical)
 
-**절대로 `new Date().toISOString().slice(0, 10)` 으로 날짜 문자열을 만들지 말 것.** UTC 날짜를 반환하므로 KST 자정~오전 9시 사이에 어제 날짜가 저장된다.
+→ Critical Rules #1 참고. 상세 배경은 `src/lib/date.ts` 주석에 있음.
 
-**항상 `toLocalDateStr()` 유틸리티를 사용한다:**
+`reading_logs.date`, `users.last_read_date`, 퀘스트/통계 날짜 비교 모두 `toLocalDateStr()`으로 통일:
 ```typescript
 import { toLocalDateStr } from "@/lib/date";
 const today = toLocalDateStr(); // 로컬 시간대 기준 YYYY-MM-DD
 ```
-
-`src/lib/date.ts`에 정의됨. `reading_logs.date`, `users.last_read_date`, 퀘스트/통계 날짜 비교 모두 이 함수로 통일.
-
-**배경:** `reading_logs.date`(UTC)와 퀘스트 `buildQuestContext`(로컬)가 불일치해 페이지 기록이 오늘 퀘스트에 반영되지 않던 버그가 있었다. `StatsTab.tsx` 내에서도 일부 차트는 로컬, 일부는 UTC를 쓰는 불일치가 있었음 — 2025-03-23 수정 완료.
 
 ### 컬러 시스템
 
