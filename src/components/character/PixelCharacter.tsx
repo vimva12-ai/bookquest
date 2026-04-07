@@ -11,14 +11,21 @@ interface Props {
 }
 
 // 장비 부위별 위치 (size 기준 비율, x/y = 아이콘 중심 좌표)
-// 캐릭터 해부학 기준: 머리 상단 y≈5%, 흉부 y≈38%, 발 y≈88%
+//
+// 스프라이트 해부학 기준 (캐릭터가 이미지 전체 높이를 거의 채움):
+//   머리 상단 y≈5%,  머리 중심 y≈14%,  어깨 y≈26%
+//   흉부 중심 y≈42%, 손목/손 y≈53%,    발목/발 y≈84%
+//   좌팔(방패) x≈22%, 우팔(무기) x≈78%
+//
+// iconSize = size × 0.30 이므로 top = size×y − iconSize/2
+// → y=0.15 이하면 size=144 기준 컨테이너 위로 약간 넘침 (overflow:visible 허용)
 const EQUIPMENT_POSITIONS: Record<string, { x: number; y: number; z: number }> = {
-  cloak:  { x: 0.50, y: 0.34, z: 1 }, // 망토: 어깨 (캐릭터 뒤에 배치)
-  armor:  { x: 0.50, y: 0.42, z: 3 }, // 갑옷: 흉부 중앙
-  helmet: { x: 0.50, y: 0.08, z: 4 }, // 투구: 머리
-  shield: { x: 0.18, y: 0.50, z: 3 }, // 방패: 왼쪽
-  weapon: { x: 0.78, y: 0.50, z: 3 }, // 무기: 오른쪽
-  boots:  { x: 0.50, y: 0.85, z: 3 }, // 신발: 발
+  cloak:  { x: 0.50, y: 0.30, z: 1 }, // 망토: 어깨/등 (캐릭터 뒤에 배치)
+  helmet: { x: 0.50, y: 0.14, z: 4 }, // 투구: 머리 중심
+  armor:  { x: 0.50, y: 0.44, z: 3 }, // 갑옷: 흉부 중앙
+  shield: { x: 0.22, y: 0.53, z: 3 }, // 방패: 왼손 (캐릭터 왼쪽)
+  weapon: { x: 0.78, y: 0.53, z: 3 }, // 무기: 오른손 (캐릭터 오른쪽)
+  boots:  { x: 0.50, y: 0.84, z: 3 }, // 신발: 발 중심
 };
 
 const SLOT_ORDER = ["cloak", "armor", "helmet", "shield", "weapon", "boots"] as const;
