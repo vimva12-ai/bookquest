@@ -123,6 +123,191 @@ function DeleteConfirmModal({
   );
 }
 
+// ─── 책 정보 수정 모달 ──────────────────────────────────
+function EditBookModal({
+  book,
+  onClose,
+  onSave,
+}: {
+  book: Book;
+  onClose: () => void;
+  onSave: (updates: Partial<Book>) => Promise<void>;
+}) {
+  const [title, setTitle] = useState(book.title);
+  const [author, setAuthor] = useState(book.author);
+  const [genre, setGenre] = useState<Genre>(book.genre);
+  const [totalPages, setTotalPages] = useState(book.total_pages);
+  const [publisher, setPublisher] = useState(book.publisher ?? "");
+  const [status, setStatus] = useState<Book["status"]>(book.status);
+  const [saving, setSaving] = useState(false);
+
+  async function handleSave() {
+    if (!title.trim()) return;
+    setSaving(true);
+    const updates: Partial<Book> = {
+      title: title.trim(),
+      author: author.trim(),
+      genre,
+      total_pages: Math.max(book.read_pages, totalPages),
+      publisher: publisher.trim() || null,
+      status,
+    };
+    // 완독으로 변경 시 completed_at 설정
+    if (status === "complete" && book.status !== "complete") {
+      updates.completed_at = new Date().toISOString();
+    }
+    // 완독 해제 시 completed_at 제거
+    if (status !== "complete" && book.status === "complete") {
+      updates.completed_at = null;
+    }
+    await onSave(updates);
+    setSaving(false);
+  }
+
+  const STATUS_LABELS: Record<Book["status"], string> = {
+    reading: "읽는 중",
+    complete: "완독",
+    wishlist: "읽을 책",
+  };
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center p-4 bg-black/30 dark:bg-black/50"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-md bg-white dark:bg-[#242B24] rounded-2xl p-6 shadow-xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h2 className="font-bold text-gray-800 dark:text-gray-100 mb-1">📝 책 정보 수정</h2>
+        <p className="text-xs text-gray-400 dark:text-gray-500 mb-5 truncate">
+          {book.title}
+        </p>
+
+        <div className="space-y-3">
+          {/* 제목 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1.5">
+              책 제목 *
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+            />
+          </div>
+
+          {/* 저자 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1.5">
+              저자
+            </label>
+            <input
+              type="text"
+              value={author}
+              onChange={(e) => setAuthor(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+            />
+          </div>
+
+          {/* 출판사 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1.5">
+              출판사
+            </label>
+            <input
+              type="text"
+              value={publisher}
+              onChange={(e) => setPublisher(e.target.value)}
+              className="w-full border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+            />
+          </div>
+
+          {/* 전체 페이지 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-1.5">
+              전체 페이지
+            </label>
+            <div className="flex items-center gap-2">
+              <input
+                type="number"
+                min={Math.max(1, book.read_pages)}
+                value={totalPages || ""}
+                onFocus={(e) => e.target.select()}
+                onChange={(e) => setTotalPages(Number(e.target.value))}
+                className="flex-1 border border-gray-200 dark:border-gray-700 bg-white dark:bg-[#2A3229] rounded-xl px-3 py-2.5 text-sm text-gray-800 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-[#5B8C5A]"
+              />
+              <span className="text-sm text-gray-400">페이지</span>
+            </div>
+            {book.read_pages > 0 && (
+              <p className="text-xs text-gray-400 dark:text-gray-600 mt-1 pl-1">
+                현재 {book.read_pages}p 읽음 — 전체 페이지는 이보다 작을 수 없어요
+              </p>
+            )}
+          </div>
+
+          {/* 장르 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-2">
+              장르
+            </label>
+            <div className="flex flex-wrap gap-2">
+              {(Object.keys(GENRE_INFO) as Genre[]).map((g) => (
+                <GenreChip
+                  key={g}
+                  genre={g}
+                  selected={genre === g}
+                  onClick={() => setGenre(g)}
+                />
+              ))}
+            </div>
+          </div>
+
+          {/* 독서 상태 */}
+          <div>
+            <label className="text-xs font-medium text-gray-600 dark:text-gray-400 block mb-2">
+              독서 상태
+            </label>
+            <div className="flex gap-2">
+              {(["reading", "wishlist", "complete"] as Book["status"][]).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className={`flex-1 py-2 rounded-xl text-xs font-medium border transition-colors ${
+                    status === s
+                      ? "bg-[#3D5A3E] text-white border-[#3D5A3E]"
+                      : "border-gray-200 dark:border-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800"
+                  }`}
+                >
+                  {STATUS_LABELS[s]}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 mt-5">
+          <button
+            onClick={onClose}
+            className="flex-1 py-2.5 border border-gray-200 dark:border-gray-700 rounded-xl text-sm text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+          >
+            취소
+          </button>
+          <button
+            onClick={handleSave}
+            disabled={saving || !title.trim()}
+            className="flex-1 py-2.5 bg-[#3D5A3E] hover:bg-[#2D4A2E] disabled:opacity-40 text-white rounded-xl text-sm font-medium transition-colors"
+          >
+            {saving ? "저장 중..." : "저장"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── 목표 날짜 → 하루 목표 페이지 계산 ──────────────────
 function calcDailyTarget(book: Book): { pagesPerDay: number; daysLeft: number } | null {
   if (!book.target_date || book.status === "complete") return null;
@@ -144,6 +329,7 @@ function BookCard({
   onDeleteBook,
   onMemo,
   onSetTargetDate,
+  onEditBook,
 }: {
   book: Book;
   todayPagesRead: number;
@@ -151,6 +337,7 @@ function BookCard({
   onDeleteBook: (book: Book) => void;
   onMemo: (book: Book) => void;
   onSetTargetDate: (book: Book) => void;
+  onEditBook: (book: Book) => void;
 }) {
   const info = GENRE_INFO[book.genre];
   const progress = book.total_pages > 0 ? (book.read_pages / book.total_pages) * 100 : 0;
@@ -273,6 +460,12 @@ function BookCard({
               className="text-[10px] text-[#4A7A8A] dark:text-[#6BA3A3] hover:text-[#3A6A7A] transition-colors"
             >
               메모
+            </button>
+            <button
+              onClick={() => onEditBook(book)}
+              className="text-[10px] text-[#A3AEA3] dark:text-[#556655] hover:text-[#5B8C5A] dark:hover:text-[#6BA368] transition-colors"
+            >
+              수정
             </button>
             <button
               onClick={() => onDeleteBook(book)}
@@ -997,10 +1190,12 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
   const [filter, setFilter] = useState<FilterType>("all");
   const [recordingBook, setRecordingBook] = useState<Book | null>(null);
   const [deletingBook, setDeletingBook] = useState<Book | null>(null);
+  const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [targetDateBook, setTargetDateBook] = useState<Book | null>(null);
   const [toast, setToast] = useState("");
   const [addBookOpen, setAddBookOpen] = useState(false);
   const [memoBook, setMemoBook] = useState<Book | null>(null);
+  const [hideComplete, setHideComplete] = useState(false);
 
   // 토스트 자동 제거
   useEffect(() => {
@@ -1018,9 +1213,13 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
     }
   }
 
+  // 완독 숨김 적용 (전체/읽는 중/읽을 책 필터일 때만, 완독 탭은 제외)
+  const completeCount = books.filter((b) => b.status === "complete").length;
+
   // 필터 적용 + 정렬: 완독↓, 목표일 있는 책↑, 최근 읽은 책↑
   const filtered = books
     .filter((b) => filter === "all" || b.status === filter)
+    .filter((b) => !(hideComplete && filter !== "complete" && b.status === "complete"))
     .sort((a, b) => {
       // 1) 완독 책은 맨 아래
       if (a.status === "complete" && b.status !== "complete") return 1;
@@ -1080,6 +1279,14 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
       }
     }
 
+    onBooksChange();
+  }
+
+  // 책 정보 수정
+  async function handleEditBook(updates: Partial<Book>) {
+    if (!editingBook) return;
+    await supabase.from("books").update(updates).eq("id", editingBook.id);
+    setEditingBook(null);
     onBooksChange();
   }
 
@@ -1211,6 +1418,23 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
         </button>
       </div>
 
+      {/* 완독 숨기기 토글 (완독 책이 있을 때만 표시) */}
+      {completeCount > 0 && filter !== "complete" && (
+        <div className="flex justify-end">
+          <button
+            onClick={() => setHideComplete((v) => !v)}
+            className={`flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium border transition-colors ${
+              hideComplete
+                ? "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-300 dark:border-gray-600"
+                : "bg-white dark:bg-[#242B24] text-gray-400 dark:text-gray-500 border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
+            }`}
+          >
+            <span>{hideComplete ? "👁" : "🙈"}</span>
+            <span>{hideComplete ? `완독 보기 (${completeCount})` : `완독 숨기기 (${completeCount})`}</span>
+          </button>
+        </div>
+      )}
+
       {/* 책 목록 */}
       <div className="flex flex-col gap-3">
         {filtered.length === 0 ? (
@@ -1220,7 +1444,7 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
           </div>
         ) : (
           filtered.map((book) => (
-            <BookCard key={book.id} book={book} todayPagesRead={todayPagesByBook.get(book.id) ?? 0} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} onSetTargetDate={setTargetDateBook} />
+            <BookCard key={book.id} book={book} todayPagesRead={todayPagesByBook.get(book.id) ?? 0} onRecordPage={setRecordingBook} onDeleteBook={setDeletingBook} onMemo={setMemoBook} onSetTargetDate={setTargetDateBook} onEditBook={setEditingBook} />
           ))
         )}
       </div>
@@ -1256,6 +1480,15 @@ export function LibraryTab({ books, userId, logs, onBooksChange, onStatChange, o
           book={deletingBook}
           onClose={() => setDeletingBook(null)}
           onConfirm={handleDeleteBook}
+        />
+      )}
+
+      {/* 책 정보 수정 모달 */}
+      {editingBook && (
+        <EditBookModal
+          book={editingBook}
+          onClose={() => setEditingBook(null)}
+          onSave={handleEditBook}
         />
       )}
 
