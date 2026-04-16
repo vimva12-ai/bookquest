@@ -318,7 +318,9 @@ function calcDailyTarget(book: Book): { pagesPerDay: number; daysLeft: number } 
   const target = new Date(book.target_date);
   target.setHours(0, 0, 0, 0);
   const daysLeft = Math.ceil((target.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
-  return { pagesPerDay: daysLeft > 0 ? Math.ceil(remaining / daysLeft) : -1, daysLeft };
+  // daysLeft: 0 = 오늘 마감, >0 = N일 남음, <0 = 초과
+  // 목표일 당일도 읽는 날로 포함하므로 (daysLeft + 1)일로 나눔
+  return { pagesPerDay: daysLeft >= 0 ? Math.ceil(remaining / (daysLeft + 1)) : -1, daysLeft };
 }
 
 // ─── 책 카드 ────────────────────────────────────────────
@@ -408,7 +410,7 @@ function BookCard({
           {/* 하루 목표 페이지 + 오늘 달성 여부 */}
           {dailyTarget && (
             <p className={`text-[10px] mt-1 font-medium ${
-              dailyTarget.daysLeft <= 0
+              dailyTarget.daysLeft < 0
                 ? "text-red-500 dark:text-red-400"
                 : todayPagesRead >= dailyTarget.pagesPerDay
                 ? "text-[#3D5A3E] dark:text-[#6BA368]"
@@ -416,8 +418,12 @@ function BookCard({
                 ? "text-amber-500 dark:text-amber-400"
                 : "text-[#5B8C5A] dark:text-[#6BA368]"
             }`}>
-              {dailyTarget.daysLeft <= 0
+              {dailyTarget.daysLeft < 0
                 ? `⚠️ 목표일 초과 — 하루 ${dailyTarget.pagesPerDay < 0 ? "??" : dailyTarget.pagesPerDay}p`
+                : dailyTarget.daysLeft === 0
+                ? todayPagesRead >= dailyTarget.pagesPerDay
+                  ? `✅ 오늘 마감 · 목표 달성! (${todayPagesRead}/${dailyTarget.pagesPerDay}p)`
+                  : `📅 오늘 마감 · 하루 ${dailyTarget.pagesPerDay}p`
                 : todayPagesRead >= dailyTarget.pagesPerDay
                 ? `✅ 오늘 목표 달성! (${todayPagesRead}/${dailyTarget.pagesPerDay}p)`
                 : todayPagesRead > 0
@@ -497,8 +503,8 @@ function TargetDateModal({
   const targetMs = targetDate ? (() => { const d = new Date(targetDate); d.setHours(0, 0, 0, 0); return d.getTime(); })() : null;
   const daysLeft = targetMs !== null ? Math.ceil((targetMs - todayMs) / (1000 * 60 * 60 * 24)) : null;
   const remaining = book.total_pages - book.read_pages;
-  const pagesPerDay = (daysLeft !== null && daysLeft > 0 && remaining > 0)
-    ? Math.ceil(remaining / daysLeft)
+  const pagesPerDay = (daysLeft !== null && daysLeft >= 0 && remaining > 0)
+    ? Math.ceil(remaining / (daysLeft + 1))
     : null;
 
   async function handleSave() {
@@ -542,14 +548,20 @@ function TargetDateModal({
 
         {targetDate && daysLeft !== null && (
           <p className={`text-sm mb-5 font-medium ${
-            daysLeft <= 0
+            daysLeft < 0
               ? "text-red-500 dark:text-red-400"
+              : daysLeft === 0
+              ? "text-amber-500 dark:text-amber-400"
               : daysLeft <= 3
               ? "text-amber-500 dark:text-amber-400"
               : "text-[#5B8C5A] dark:text-[#6BA368]"
           }`}>
-            {daysLeft <= 0
+            {daysLeft < 0
               ? "⚠️ 이미 지난 날짜예요"
+              : daysLeft === 0
+              ? pagesPerDay !== null
+                ? `📅 오늘 마감 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
+                : `📅 오늘 마감`
               : pagesPerDay !== null
               ? `🎯 ${daysLeft}일 남음 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
               : `🎯 ${daysLeft}일 남음`}
@@ -610,8 +622,8 @@ function RecordPageModal({
   const todayMs = (() => { const d = new Date(); d.setHours(0, 0, 0, 0); return d.getTime(); })();
   const targetMs = targetDate ? (() => { const d = new Date(targetDate); d.setHours(0, 0, 0, 0); return d.getTime(); })() : null;
   const daysLeft = targetMs !== null ? Math.ceil((targetMs - todayMs) / (1000 * 60 * 60 * 24)) : null;
-  const pagesPerDay = (daysLeft !== null && daysLeft > 0 && remainingAfter > 0)
-    ? Math.ceil(remainingAfter / daysLeft)
+  const pagesPerDay = (daysLeft !== null && daysLeft >= 0 && remainingAfter > 0)
+    ? Math.ceil(remainingAfter / (daysLeft + 1))
     : null;
 
   async function handleSave() {
@@ -674,14 +686,18 @@ function RecordPageModal({
           />
           {targetDate && daysLeft !== null && (
             <p className={`text-xs mt-1.5 pl-1 font-medium ${
-              daysLeft <= 0
+              daysLeft < 0
                 ? "text-red-500 dark:text-red-400"
                 : daysLeft <= 3
                 ? "text-amber-500 dark:text-amber-400"
                 : "text-[#5B8C5A] dark:text-[#6BA368]"
             }`}>
-              {daysLeft <= 0
+              {daysLeft < 0
                 ? "⚠️ 이미 지난 날짜예요"
+                : daysLeft === 0
+                ? pagesPerDay !== null
+                  ? `📅 오늘 마감 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
+                  : `📅 오늘 마감`
                 : pagesPerDay !== null
                 ? `🎯 ${daysLeft}일 남음 · 하루 ${pagesPerDay}p씩 읽으면 완독!`
                 : `🎯 ${daysLeft}일 남음`}
