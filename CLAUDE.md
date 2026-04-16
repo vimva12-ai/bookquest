@@ -9,6 +9,7 @@ npm run dev       # 개발 서버 (Turbopack, http://localhost:3000)
 npm run build     # 프로덕션 빌드 (next build; 타입 오류가 있어도 빌드는 통과할 수 있으므로 tsc 별도 실행 필요)
 npm run lint      # ESLint
 npx tsc --noEmit  # 빌드 없이 타입 체크만
+npm run preview   # Cloudflare edge 환경 로컬 프리뷰 (opennextjs-cloudflare build + wrangler pages dev)
 ```
 
 테스트 스위트는 없다. **`npx tsc --noEmit` (타입체크)가 유일한 자동 검증 수단**이므로, 빌드가 TypeScript 오류 0개일 때만 완료로 간주한다.
@@ -18,9 +19,8 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 ## 절대 하지 말 것 (Critical Rules)
 
 1. **`new Date().toISOString().slice(0, 10)` 금지** → `toLocalDateStr()` 사용 (`src/lib/date.ts`). UTC 기준이라 KST 자정~오전 9시 사이에 어제 날짜가 반환됨.
-2. **`supabase/client.ts`를 컴포넌트 body에서 직접 호출 금지** → `useEffect`/이벤트 핸들러 안에서만. SSR 시 env var 없이 실행되어 빌드 오류 발생.
-3. **`auth.currentUser` 직접 접근 금지** → `resolveUser()` 사용. 페이지 로드 직후 auth 복원 중에는 `null` 반환.
-4. **AppShell 없이 탭 컴포넌트에서 직접 DB write 금지** → 반드시 `handleStatChange` 등 AppShell 콜백을 통해 실행.
+2. **`getSupabaseBrowserClient()`를 Server Component나 SSR 가능 컴포넌트 body에서 직접 호출 금지** → `"use client"` 컴포넌트에서만 사용. SSR 시 env var 없이 실행되어 빌드 오류 발생.
+3. **EXP·골드·스트릭·스탯 변경을 탭 컴포넌트에서 직접 DB write 금지** → 반드시 AppShell의 `handleStatChange` 콜백을 통해 실행. 단, `books` 테이블 CRUD(추가/수정/삭제/목표일)는 LibraryTab에서 직접 write해도 된다.
 
 ## 프리뷰 정책
 
@@ -40,8 +40,8 @@ npx tsc --noEmit  # 빌드 없이 타입 체크만
 
 ### 핵심 컴포넌트 역할
 
-- **`src/app/page.tsx`** — 서버 컴포넌트. 첫 로드 시 users/user_stats/user_equipment/user_titles/books 5개 테이블을 한 번에 조회하고 없으면 신규 행 생성. `AppShell`에 initialData로 전달.
-- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리. `forgottenBooks` state에 7일 이상 미열람 중인 reading 상태 책을 저장하고 리마인드 배너를 표시한다 (하루 1회, `localStorage` 키 `'bq-reminder-date'`로 중복 방지).
+- **`src/app/page.tsx`** — 서버 컴포넌트. 첫 로드 시 users/user_stats/user_equipment/user_titles/books/reading_logs 6개 테이블을 한 번에 조회하고 없으면 신규 행 생성. `AppShell`에 initialData로 전달.
+- **`src/components/AppShell.tsx`** — 유일한 상태 관리 허브. `character`(프로필+스탯+장비+칭호)와 `books`를 `useState`로 보관. 탭 전환, EXP/골드 갱신, 스트릭 업데이트, 칭호 자동 해금, 장비 구매 로직이 모두 여기 있다. 각 탭 컴포넌트는 데이터를 props로 받고 game economy mutation은 콜백으로 위임한다. `quests`는 `useMemo`로 날짜 시드 기반 생성 (DB 저장 없음). 메모 목록(`reading_notes`)은 `refreshNotes`로 별도 관리. `forgottenBooks` state에 7일 이상 미열람 중인 reading 상태 책을 저장하고 리마인드 배너를 표시한다 (하루 1회, `localStorage` 키 `'bq-reminder-date'`로 중복 방지).
 - **`src/middleware.ts`** — 모든 요청에서 Supabase 세션 쿠키 갱신. 미인증 사용자는 `/login`으로 리다이렉트.
 
 ### 인증 흐름
@@ -88,9 +88,9 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 | 파일 | 내용 |
 |------|------|
 | `exp.ts` | 레벨 커브 공식(`30 * level^1.4`), EXP→레벨 변환. 보상 상수: `EXP_PER_PAGE=1`, `EXP_BONUS_COMPLETE=50`, `EXP_PER_MEMO=5`, `GOLD_PER_PAGE=1`, `GOLD_BONUS_COMPLETE=30`, `GOLD_BONUS_FAST_COMPLETE=50` |
-| `stats.ts` | 장르↔스탯 매핑(`GENRE_INFO`), 장비 7등급 상수(`EQUIPMENT_TIERS`), 부위 6종(`EQUIPMENT_SLOTS`) |
-| `titles.ts` | 21개 칭호 정의. `buildTitleContext()` → `getNewlyUnlockedTitles()`로 신규 해금 확인 |
-| `achievements.ts` | 28개 업적 정의. `isAchieved(def, stats)`로 달성 여부 확인 |
+| `stats.ts` | 장르↔스탯 매핑(`GENRE_INFO`), 장비 7등급 상수(`EQUIPMENT_TIERS`), 부위 6종(`EQUIPMENT_SLOTS`). `PAGES_PER_STAT=50` (50p당 스탯 +1) |
+| `titles.ts` | 칭호 정의. `buildTitleContext()` → `getNewlyUnlockedTitles()`로 신규 해금 확인 |
+| `achievements.ts` | 28개 업적 정의. `AchievementStats` 인터페이스로 진행도 계산 |
 | `quests.ts` | 날짜 시드 기반 의사난수로 일/주/월 퀘스트 3개씩 생성. 같은 날짜면 항상 같은 퀘스트. **DB 저장 없음 — 클라이언트에서 실시간 계산** |
 
 ### 스탯 계산 방식
@@ -101,11 +101,29 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 
 ### AppShell 콜백 구조
 
-탭 컴포넌트는 순수 UI — 모든 DB write는 AppShell 콜백을 통해 실행된다:
+탭 컴포넌트에서 game economy를 바꿀 때는 반드시 AppShell 콜백을 사용한다:
 
 - `handleStatChange(expDelta, goldDelta, streakDelta?)` — 페이지 기록 시 호출. EXP/골드/레벨/스트릭 갱신 + `refreshStats()` + 칭호 해금 체크를 순차 실행.
 - `handleEquipmentPurchase(slot, tier, price)` — 골드 차감 + 장비 장착을 동시에 처리.
 - `handleTitleChange(titleId)` — 칭호 선택 즉시 반영.
+- `onBooksChange` → `refreshBooks()` — books 테이블 변경 후 목록 재조회.
+
+### 탭 컴포넌트 구조 (`src/components/tabs/`)
+
+- **`LibraryTab.tsx`** — 책 추가/수정/삭제/페이지 기록/목표일 설정. 하단에 `AddBookForm`(카카오 검색 + 직접 입력)이 인라인 렌더링된다.
+  - **모달 목록**: `RecordPageModal`(기록), `EditBookModal`(수정), `DeleteConfirmModal`(삭제 확인), `TargetDateModal`(목표일), `MemoModal`(메모)
+  - **EditBookModal**: 제목/저자/출판사/전체 페이지/장르/독서 상태 수정 가능. 완독 상태 변경 시 `completed_at` 자동 처리. `total_pages`는 `read_pages` 미만으로 내릴 수 없음.
+  - **완독 숨기기 토글**: `hideComplete` state. 완독 책이 있을 때 필터 탭 아래에 버튼 표시. "완독" 필터 탭 선택 시 토글 버튼 숨김.
+  - **이미 읽은 페이지**: 책 추가 시 `prior_pages` 필드로 기존 진행도 입력 가능. `reading_logs`를 생성하지 않으므로 EXP/골드/스탯에 반영되지 않는다.
+  - **완독 목표일**: `target_date`를 책 추가 시 또는 카드의 "목표일" 버튼으로 독립 설정 가능.
+  - **카카오 검색 연동**: 검색 → 선택 시 제목/저자/출판사/표지/ISBN 자동 입력 + `/api/books/page-info`에서 커뮤니티 페이지 수를 가져와 `total_pages` 자동 설정.
+  - **서재 정렬**: 완독 책 맨 아래 → 목표일 있는 책 우선 → 최근 읽은 책 우선.
+- **`MemoModal.tsx`** — 책별 메모 관리 모달. `reading_notes` 테이블 CRUD. 페이지 번호(선택), SNS 공유 기능 포함.
+- **`QuestPanel.tsx`** — 서재 탭 상단에 삽입. AppShell에서 `useMemo`로 계산한 `quests` prop을 받는다. DB 저장 없음.
+- **`CharacterTab.tsx`** — 레벨/EXP/스탯/장비/칭호 표시. `PixelCharacter` + `EquipmentIcon` 사용.
+- **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
+- **`AchievementsTab.tsx`** — 28개 업적 카드. `AchievementStats`를 prop으로 받으며 DB 조회 없음.
+- **`StatsTab.tsx`** — 독서량 차트 주간(7일)/월간(4주)/연간(12개월) 탭. 스트릭 캘린더는 페이지 수에 따라 3단계 색상 (1–50p 연한 초록, 51–100p 기본 초록, 101p+ 진한 초록).
 
 ### 캐릭터 렌더링 (`src/components/character/`)
 
@@ -116,36 +134,11 @@ Google 로그인 → signInWithOAuth({ provider: "google" })
 슬롯 ID: `helmet` · `armor` · `cloak` · `weapon` · `shield` · `boots`  
 등급 ID: `iron` · `bronze` · `silver` · `gold` · `platinum` · `master` · `challenger`
 
-**`PixelCharacter.tsx`** — `gender`(`"male"|"female"`)에 따라 베이스 캐릭터 PNG를 렌더링하고, `equipment` prop에서 장착된 슬롯의 장비 아이콘을 절대 위치로 오버레이한다.
-- 장비 오버레이 위치는 `EQUIPMENT_POSITIONS` 상수(x/y 비율)로 제어. 위치 조정 시 이 상수만 수정.
-- 장비 아이콘 크기: `size * 0.30` (최소 18px)
-- `cloak`은 z-index 1 (캐릭터 뒤), 나머지 장비는 z-index 3 (캐릭터 앞)
+**`PixelCharacter.tsx`** — 장비 오버레이 위치는 `EQUIPMENT_POSITIONS` 상수(x/y 비율)로 제어. `cloak`은 z-index 1 (캐릭터 뒤), 나머지 장비는 z-index 3 (앞). 장비 아이콘 크기: `size * 0.30` (최소 18px).
 
-**`EquipmentIcon.tsx`** — 장착 중이면 `public/assets/sprites/{슬롯}_{등급}.png` 이미지, 미장착이면 슬롯 모양의 인라인 SVG 플레이스홀더(회색 `#C8D0C8`) 표시.
-
-**성별 선택**: `localStorage` 키 `'bq-character-gender'`(`"male"|"female"`)에 저장. `CharacterTab`에서 토글, `ShopTab`은 마운트 시 읽어 미리보기에 반영. `AppShell`을 거치지 않으므로 탭 전환 후 ShopTab 진입 시 최신값 반영됨.
+**성별 선택**: `localStorage` 키 `'bq-character-gender'`에 저장. `AppShell`을 거치지 않으므로 탭 전환 후 ShopTab 진입 시 최신값 반영됨.
 
 새 스프라이트 추가 시: `public/assets/sprites/`에 파일 배치만 하면 되며 코드 변경 불필요 (파일명 규칙만 지킬 것).
-
-### 탭 컴포넌트 구조 (`src/components/tabs/`)
-
-- **`LibraryTab.tsx`** — 책 추가/삭제/페이지 기록/목표일 설정. 기록 시 `handleStatChange` 콜백 호출. 하단에 `AddBookForm`(새 책 추가 폼)이 인라인 렌더링된다.
-  - **이미 읽은 페이지**: 책 추가 시 `prior_pages` 필드로 기존 진행도 입력 가능. `books.read_pages`를 초기화하지만 `reading_logs`는 생성하지 않으므로 EXP/골드/스탯에 반영되지 않는다. 이후 `RecordPageModal`로 기록한 페이지만 보상 대상.
-  - **완독 목표일**: `target_date`를 책 추가 시 또는 카드의 "목표일" 버튼(`TargetDateModal`)으로 독립 설정 가능. 목표일이 있으면 카드에 "🎯 N일 남음 · 하루 Xp" 표시 (초과=빨강, 3일 이하=주황).
-  - **카카오 검색 연동**: 검색 → 선택 시 제목/저자/출판사/표지/ISBN 자동 입력 + `/api/books/page-info`에서 커뮤니티 페이지 수를 가져와 `total_pages` 자동 설정.
-- **`MemoModal.tsx`** — 책별 메모 관리 모달. `reading_notes` 테이블 CRUD. 페이지 번호(선택), SNS 공유 기능 포함. `LibraryTab`의 "메모" 버튼으로 열린다.
-- **`QuestPanel.tsx`** — 서재 탭 상단에 삽입되는 퀘스트 패널. 일/주/월 탭 전환. AppShell에서 `useMemo`로 계산한 `quests` prop을 받는다. DB 저장 없음.
-- **`CharacterTab.tsx`** — 레벨/EXP/스탯/장비/칭호 표시. `PixelCharacter` + `EquipmentIcon` 사용.
-- **`ShopTab.tsx`** — 장비 구매. 슬롯 탭 전환 시 `previewTier` state가 리셋되며, 등급 행 클릭 시 미리보기 캐릭터에 즉시 반영. 구매 버튼만 `e.stopPropagation()`으로 미리보기 클릭과 분리.
-- **`AchievementsTab.tsx`** — 28개 업적 카드 목록. `isAchieved(def, stats)`로 달성 여부 계산. `AchievementStats`를 prop으로 받으며 DB 조회 없음.
-- **`StatsTab.tsx`** — 통계. 독서량 차트는 주간(7일 막대)/월간(4주 막대)/연간(12개월 막대) 탭으로 전환. 각 탭에서 이전 기간 대비 증감률(%) 표시. 스트릭 캘린더는 페이지 수에 따라 3단계 색상 (1–50p 연한 초록, 51–100p 기본 초록, 101p+ 진한 초록).
-
-### 서재 목록 정렬 규칙
-
-`LibraryTab.tsx`의 `filtered` 배열은 다음 우선순위로 정렬된다:
-1. **완독 책은 맨 아래** — `status === "complete"`
-2. **목표일 있는 책 우선** — `target_date`가 설정된 책이 위로
-3. **최근 읽은 책 우선** — `reading_logs`에서 책별 마지막 기록 날짜 기준 내림차순 (기록 없으면 맨 뒤)
 
 ### 환경변수
 
@@ -189,7 +182,7 @@ Tailwind v4 클래스 기반. `globals.css`의 `@variant dark (&:where(.dark, .d
 
 ### 배포 (Cloudflare Pages)
 
-- 어댑터: `@opennextjs/cloudflare` v1.17.1 (`open-next.config.ts` 참고)
+- 어댑터: `@opennextjs/cloudflare` (`open-next.config.ts` 참고)
 - CF Pages 빌드 커맨드: `npx opennextjs-cloudflare build && cp .open-next/worker.js .open-next/_worker.js && cp -r .open-next/assets/. .open-next/ && printf '{"version":1,"include":["/*"],"exclude":["/_next/static/*","/_next/image/*","/favicon.ico","/assets/*"]}' > .open-next/_routes.json`
 - 환경변수: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY` (빌드 시 필요), `KAKAO_REST_API_KEY` (서버사이드 전용)
 - **주의:** CF Pages에서 "Retry deployment"는 해당 시점 커밋을 재빌드한다. 새 코드를 반영하려면 반드시 `git push`로 새 커밋을 트리거해야 한다.
