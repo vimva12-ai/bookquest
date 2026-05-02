@@ -29,6 +29,9 @@ export function MemoModal({ book, userId, onClose, onMemoCountChange }: Props) {
   const [editPage, setEditPage] = useState<string>("");
   const [editIsPublic, setEditIsPublic] = useState(false);
 
+  // 삭제 확인
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+
   // 공유 피드백
   const [shareToast, setShareToast] = useState("");
 
@@ -76,6 +79,7 @@ export function MemoModal({ book, userId, onClose, onMemoCountChange }: Props) {
 
   async function handleDelete(id: string) {
     await supabase.from("reading_notes").delete().eq("id", id);
+    setDeleteConfirmId(null);
     await fetchMemos();
     onMemoCountChange?.();
   }
@@ -276,25 +280,45 @@ export function MemoModal({ book, userId, onClose, onMemoCountChange }: Props) {
                           <span>{formatDate(memo.created_at)}</span>
                           <span>{memo.is_public ? "🌍" : "🔒"}</span>
                         </div>
-                        <div className="flex gap-1">
-                          <button
-                            onClick={() => handleShare(memo)}
-                            className="text-[10px] px-2 py-0.5 rounded-lg text-[#4A7A8A] hover:bg-[#4A7A8A]/10 transition-colors"
-                          >
-                            공유
-                          </button>
-                          <button
-                            onClick={() => startEdit(memo)}
-                            className="text-[10px] px-2 py-0.5 rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                          >
-                            수정
-                          </button>
-                          <button
-                            onClick={() => handleDelete(memo.id)}
-                            className="text-[10px] px-2 py-0.5 rounded-lg text-[#B85C4A] hover:bg-[#B85C4A]/10 transition-colors"
-                          >
-                            삭제
-                          </button>
+                        <div className="flex gap-1 items-center">
+                          {deleteConfirmId === memo.id ? (
+                            <>
+                              <span className="text-[10px] text-gray-500 dark:text-gray-400 mr-1">삭제할까요?</span>
+                              <button
+                                onClick={() => handleDelete(memo.id)}
+                                className="text-[10px] px-2 py-0.5 rounded-lg bg-[#B85C4A] text-white hover:bg-[#A04A38] transition-colors"
+                              >
+                                삭제
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmId(null)}
+                                className="text-[10px] px-2 py-0.5 rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                취소
+                              </button>
+                            </>
+                          ) : (
+                            <>
+                              <button
+                                onClick={() => handleShare(memo)}
+                                className="text-[10px] px-2 py-0.5 rounded-lg text-[#4A7A8A] hover:bg-[#4A7A8A]/10 transition-colors"
+                              >
+                                공유
+                              </button>
+                              <button
+                                onClick={() => startEdit(memo)}
+                                className="text-[10px] px-2 py-0.5 rounded-lg text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                              >
+                                수정
+                              </button>
+                              <button
+                                onClick={() => setDeleteConfirmId(memo.id)}
+                                className="text-[10px] px-2 py-0.5 rounded-lg text-[#B85C4A] hover:bg-[#B85C4A]/10 transition-colors"
+                              >
+                                삭제
+                              </button>
+                            </>
+                          )}
                         </div>
                       </div>
                     </div>
